@@ -1,76 +1,45 @@
-# NES Emulator JS Puro v14
+# 🕹️ Do Zero ao Bit: Construindo um Emulador de NES em JavaScript Puro com TV CRT Interativa e WebAssembly!
 
 <p align="center">
-  <img src="assets/emulador_final.gif" width="700" alt="Demonstração do Emulador v14" />
+  <img src="assets/emulador_final.gif" width="700" alt="Demonstração do Emulador" />
 </p>
 
-Versão criada para resolver o problema de regressão gráfica.
+Quem viveu a era dos 8 bits sabe o quanto a experiência física importava: o barulho de encaixar o cartucho, o botão de EJECT, o chiado da TV saindo do ar e a imagem de tubo (CRT) se contraindo ao desligar a TV.
 
-## Ideia principal
+Decidi recriar essa nostalgia construindo um Emulador de NES 100% Client-Side usando JavaScript Puro (Vanilla JS), focado tanto em precisão de arquitetura quanto em fidelidade estética.
 
-A v8 estava funcionando melhor no **Shadow of the Ninja**.  
-As versões seguintes melhoraram o Mario, mas algumas correções globais acabaram atrapalhando jogos MMC3.
+---
 
-A v14 usa uma abordagem mais inteligente:
+## 🚀 Principais Recursos Técnicos
 
-- mantém a **base gráfica da v8** para jogos MMC3, como Shadow of the Ninja;
-- aplica correções de Mario **somente quando a ROM parece ser Super Mario Bros / NROM**;
-- evita que um fix específico de um jogo quebre outro.
+### 👾 1. Core do Emulador (NES.js)
+- **Mappers Comerciais:** Suporte completo a múltiplos mappers clássicos (Mapper 0 - NROM, Mapper 1 - MMC1, Mapper 2 - UxROM, Mapper 3 - CNROM, Mapper 7 - AxROM e Mapper 4 - MMC3 com CHR-RAM) para rodar a grande maioria dos clássicos comerciais.
+- **Instruções Não-Oficiais:** Mapeamento de opcodes de CPU 6502 não-oficiais (como NOPs extras, LAX e SAX) e tratamento seguro de erros para evitar travamentos em traduções e romhacks.
+- **PRG-RAM ($6000 - $7FFF):** Suporte para jogos que utilizam memória de trabalho extra e salvamento por bateria.
 
-## Perfis automáticos
+### 📺 2. Gabinete CRT Retro Interativo (HTML & CSS Avançado)
+- **Efeito CRT vs Digital:** Filtro de imagem analógico completo com scanlines, curvatura de tela (bezel shadow), reflexo de fósforo e oscilação de brilho analógica que pode ser desativado pelo botão `V.MODE`.
+- **Animação CRT Power Collapse:** O botão físico `POWER` desliga a TV realizando um efeito realista de colapso de imagem (encolhendo em uma linha e depois em um ponto branco antes de sumir).
+- **Dials 3D Rotativos:** Botões rotativos em CSS 3D com LEDs indicadores amarelos para ajuste de volume, modo e tamanho de tela.
+- **Chuvisco e Chiado Analógico (TV fora do ar):** Quando a TV está sem jogo, ela gera ruído visual de estática e reproduz um chiado de estática realista (ruído branco gerado dinamicamente via Web Audio API com um filtro passa-banda em 1000Hz). Ambos silenciam imediatamente ao inserir um jogo!
 
-O emulador agora detecta um perfil simples da ROM:
+### 🖨️ 3. Console Famicom Virtual & Disquetes de Save
+- **Encaixe e Hashing de Cartucho:** Ao selecionar um jogo, a fita surge e desliza animada para dentro do slot. A cor do cartucho e o design mudam com base no nome do jogo.
+- **Alavanca de EJECT Física:** O botão de eject ejeta o cartucho fisicamente, interrompendo a emulação e voltando a TV para o modo de estática/chuvisco.
+- **Saves em Disquetes Retro:** Dois slots de salvamento representados por disquetes interativos na prateleira. Ao salvar, o nome do jogo é escrito "à mão" na etiqueta do disquete de forma dinâmica. O estado é persistido no `localStorage`.
 
-### Perfil `mmc3_v8_safe`
+### 📦 4. Suporte a ZIP e 7-Zip Nativo no Navegador
+- Para evitar que o usuário precise descompactar os jogos, integramos o `JSZip` e portamos o motor oficial do **7-Zip para WebAssembly (Wasm)**, permitindo descompactar e extrair ROMs `.nes` de arquivos `.zip` e `.7z` 100% no cliente, sem requisições de backend.
 
-Usado para Mapper 4/MMC3.
+### 🎧 5. Som Chiptune de Alta Fidelidade (SimpleAPU)
+- Engine de som calibrada livre de ruído DC e estalos usando filtros passa-alta de 90Hz e passa-baixa de 14.000Hz, além de um Compressor de Dinâmica de 3:1 para trazer o brilho e o ataque das ondas quadradas/triangulares originais.
 
-- mantém comportamento gráfico da v8;
-- não aplica HUD fix do Mario;
-- não força sprite zero hit;
-- evita as regressões da v11/v12/v13 no Shadow.
+---
 
-### Perfil `smb_nrom`
+## 💻 Stack Tecnológica
 
-Usado para ROMs NROM típicas do Super Mario Bros.
+- **Interface:** HTML5, Vanilla CSS (com foco em pseudo-elementos e animações 3D), JavaScript puro.
+- **Áudio:** Web Audio API (geração de ruído de estática e síntese chiptune).
+- **Módulos:** WebAssembly (motor do 7-Zip portado do C/C++).
 
-- ativa fallback de sprite zero hit;
-- trava o scroll do HUD nas primeiras linhas;
-- melhora o status bar do Mario;
-- mantém o jogo sem travar no loop de `$2002`.
-
-### Perfil `generic`
-
-Usado para outras ROMs.
-
-- sem hacks específicos;
-- comportamento mais neutro.
-
-## Melhorias da v14
-
-- base PPU v8 restaurada para MMC3
-- sistema de perfil automático por ROM
-- correções do Mario isoladas
-- Shadow of the Ninja não recebe hacks do Mario
-- Mario recebe apenas os fixes necessários
-- status mostra o perfil usado
-- mantém APU v7
-- mantém Mapper 0 e Mapper 4/MMC3 experimental
-
-## Como rodar
-
-```bash
-python3 -m http.server 8080
-```
-
-Abra:
-
-```text
-http://localhost:8080
-```
-
-Carregue a ROM e clique em **Rodar**.
-
-## Observação
-
-Essa versão prioriza estabilidade prática por jogo/perfil, em vez de aplicar correções globais que podem causar regressões.
+Um mergulho incrível em engenharia de software de baixo nível, renderização de vídeo de alta performance no Canvas e interfaces imersivas!
