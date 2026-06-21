@@ -43,3 +43,80 @@ Decidi recriar essa nostalgia construindo um Emulador de NES 100% Client-Side us
 - **Módulos:** WebAssembly (motor do 7-Zip portado do C/C++).
 
 Um mergulho incrível em engenharia de software de baixo nível, renderização de vídeo de alta performance no Canvas e interfaces imersivas!
+
+---
+
+## 🛠️ Como Executar o Projeto Localmente
+
+Devido às políticas de segurança dos navegadores modernos (CORS), que bloqueiam o carregamento de arquivos WebAssembly (`.wasm`) e módulos ES6 diretamente pelo protocolo `file://` (ao tentar abrir o arquivo `index.html` clicando duas vezes nele), **é necessário rodar o projeto através de um servidor HTTP local**.
+
+Aqui estão as formas mais fáceis e rápidas de inicializar o servidor:
+
+### Opção 1: Usando Python (Geralmente pré-instalado)
+Abra o terminal ou PowerShell na pasta do projeto e execute:
+```bash
+python -m http.server 8000
+```
+Depois, abra o seu navegador e acesse: [http://localhost:8000](http://localhost:8000)
+
+### Opção 2: Usando Node.js (npx)
+Se você tem o Node.js instalado, execute no terminal da pasta do projeto:
+```bash
+npx serve
+```
+Depois, acesse o endereço gerado (geralmente [http://localhost:3000](http://localhost:3000) ou [http://localhost:5000](http://localhost:5000)).
+
+### Opção 3: Extensão "Live Server" do VS Code
+Se você utiliza o VS Code:
+1. Instale a extensão **Live Server** (desenvolvida por *Ritwick Dey*).
+2. Abra a pasta do projeto no VS Code.
+3. Clique com o botão direito sobre o arquivo `index.html` e selecione **"Open with Live Server"** (ou clique em **"Go Live"** na barra de status inferior direita).
+
+---
+
+## 🕹️ Guia de Operação do Gabinete Retro
+
+O emulador conta com um gabinete virtual totalmente interativo modelado em CSS 3D. Veja como operá-lo:
+
+1. **Ligar/Desligar a TV (`POWER`):**
+   * Pressione o botão vermelho **POWER** do lado direito do monitor. A TV ligará com um chuvisco e chiado analógico (estática) caso não haja cartucho inserido. Ao desligá-la, note a animação clássica de colapso de fósforo CRT (a tela encolhe até virar uma linha horizontal e depois um ponto luminoso antes de apagar).
+2. **Inserir um Jogo (ROM):**
+   * **Homebrew Integrado:** Clique em qualquer um dos cartuchos na prateleira inferior (**Alter Ego**, **Zooming Secretary** ou **Lawn Mower**). O cartucho deslizará fisicamente para dentro do console e o jogo iniciará automaticamente.
+   * **ROM Personalizada:** Arraste e solte ou clique na área de upload acima do console para carregar uma ROM (`.nes`), ou arquivos compactados (`.zip`, `.7z`). O cartucho físico se adaptará dinamicamente ao nome do jogo e entrará no console.
+3. **Ejetar o Cartucho (`EJECT`):**
+   * Clique na alavanca de **EJECT** central no console Famicom. O cartucho será ejetado, a emulação pausada e a TV voltará para a estática/chiado analógico imediatamente.
+4. **Reiniciar o Jogo (`RESET`):**
+   * Pressione o botão azul **RESET** no console Famicom para reiniciar o jogo atual do início.
+5. **Ajuste de Volume e Modo de Vídeo:**
+   * **Volume:** Regule o volume geral da TV e do chiado movendo os seletores ou girando o dial de áudio.
+   * **V.MODE (Filtro CRT):** Use o interruptor **V.MODE** para alternar entre o filtro de vídeo retrô CRT (scanlines, curvatura da tela e flicker de tubo) e a imagem digital limpa.
+6. **Gravar e Carregar Progresso (Save States):**
+   * Utilize os dois disquetes 3.5" na prateleira inferior do console.
+   * **Salvar:** Clique no disquete e selecione salvar. A etiqueta do disquete será escrita à mão com o nome do jogo ativo e o estado será persistido localmente.
+   * **Carregar:** Clique no respectivo disquete para restaurar o estado instantaneamente no ponto exato onde salvou.
+
+---
+
+## 🎮 Mapeamento de Controles
+
+O emulador suporta teclado padrão e Gamepads (controles de Xbox, PlayStation, etc.) via HTML5 Gamepad API.
+
+### ⌨️ Teclado (Jogador 1)
+
+| Ação NES | Tecla correspondente |
+| :--- | :--- |
+| **D-Pad (Direcionais)** | Setas direcionais (`↑`, `↓`, `←`, `→`) |
+| **Botão A** | Tecla `Z` |
+| **Botão B** | Tecla `X` |
+| **SELECT** | Tecla `Shift` (Esquerda ou Direita) |
+| **START** | Tecla `Enter` |
+
+### 🎮 Gamepad (Xbox, PlayStation, etc.)
+
+| Ação NES | Controle Padrão |
+| :--- | :--- |
+| **D-Pad (Direcionais)** | D-Pad do controle ou Analógico Esquerdo |
+| **Botão A** | Botão `A` (Xbox) ou `❌` (PlayStation) |
+| **Botão B** | Botão `B`/`X` (Xbox) ou `⭕`/`⬜` (PlayStation) |
+| **SELECT** | Botão `Back`/`Share`/`Select` |
+| **START** | Botão `Start`/`Options` |
