@@ -1,78 +1,76 @@
-# 🎮 NES Emulator — JS Puro (v11)
-
-Um emulador de **Nintendo Entertainment System (NES)** de alta fidelidade escrito inteiramente em **JavaScript Puro (Vanilla JS)**, sem dependências ou motores externos. O projeto executa diretamente no navegador através de renderização gráfica acelerada via HTML5 Canvas e síntese de áudio de baixa latência com Web Audio API.
+# NES Emulator JS Puro v14
 
 <p align="center">
-  <img src="assets/emulador.gif" width="700" alt="Demonstração do Emulador rodando Super Mario Bros" />
+  <img src="assets/emulador_final.gif" width="700" alt="Demonstração do Emulador v14" />
 </p>
 
----
+Versão criada para resolver o problema de regressão gráfica.
 
-## 🚀 Funcionalidades e Arquitetura
+## Ideia principal
 
-O emulador simula os componentes de hardware internos do console original de 8 bits:
+A v8 estava funcionando melhor no **Shadow of the Ninja**.  
+As versões seguintes melhoraram o Mario, mas algumas correções globais acabaram atrapalhando jogos MMC3.
 
-### 1. Processador (CPU 6502)
-- Emulação do processador **Ricoh 2A03** (baseado no MOS Technology 6502).
-- Mapeamento completo de ciclos de instrução, registradores, pilha e modos de endereçamento oficiais.
-- Mecanismo integrado para interrupções de hardware e software (**NMI** para V-Blank, **IRQ** e **RESET**).
+A v14 usa uma abordagem mais inteligente:
 
-### 2. Unidade de Processamento Gráfico (PPU)
-- Renderização avançada baseada em **scanline** para máxima performance gráfica no navegador.
-- Suporte completo a sprites em tamanhos de 8x8 e 8x16 pixels.
-- Detecção precisa de colisão de **Sprite Zero Hit** para sincronização da tela.
-- **Split Scroll (Scroll Dividido):** Trava do scroll das primeiras 32 linhas de scanline em jogos Mapper 0/NROM (como *Super Mario Bros*), garantindo que a barra de status do topo (HUD) permaneça estática enquanto o cenário inferior rola normalmente.
+- mantém a **base gráfica da v8** para jogos MMC3, como Shadow of the Ninja;
+- aplica correções de Mario **somente quando a ROM parece ser Super Mario Bros / NROM**;
+- evita que um fix específico de um jogo quebre outro.
 
-### 3. Unidade de Processamento de Áudio (APU)
-- Emulação de canais de áudio 8-bit nativos (v7):
-  - 2 canais de ondas quadradas (Pulse/Square).
-  - 1 canal de onda triangular (Triangle).
-  - 1 canal de ruído branco (Noise) para efeitos sonoros de percussão/explosão.
-  - Síntese de áudio em tempo real com a **Web Audio API**.
+## Perfis automáticos
 
-### 4. Mappers de Cartuchos
-- **Mapper 0 (NROM):** Compatibilidade total com jogos clássicos (ex: *Super Mario Bros*, *Ice Climber*, *Pac-Man*).
-- **Mapper 4 (MMC3):** Suporte experimental para paginação de memória e IRQs baseados em scanline para jogos mais avançados.
+O emulador agora detecta um perfil simples da ROM:
 
----
+### Perfil `mmc3_v8_safe`
 
-## 🎮 Controles Mapeados
+Usado para Mapper 4/MMC3.
 
-O teclado do computador simula o controle original do NES:
+- mantém comportamento gráfico da v8;
+- não aplica HUD fix do Mario;
+- não força sprite zero hit;
+- evita as regressões da v11/v12/v13 no Shadow.
 
-| Botão do NES | Tecla Mapeada |
-| :--- | :--- |
-| **D-Pad (Direcional)** | Setas do Teclado (↑, ↓, ←, →) |
-| **Botão A** | Tecla `Z` |
-| **Botão B** | Tecla `X` |
-| **Botão SELECT** | Tecla `Shift` (Esquerdo) |
-| **Botão START** | Tecla `Enter` |
+### Perfil `smb_nrom`
 
----
+Usado para ROMs NROM típicas do Super Mario Bros.
 
-## 🛠️ Como Executar o Projeto
+- ativa fallback de sprite zero hit;
+- trava o scroll do HUD nas primeiras linhas;
+- melhora o status bar do Mario;
+- mantém o jogo sem travar no loop de `$2002`.
 
-Devido a restrições de segurança do navegador para carregamento de arquivos locais via JavaScript (CORS ao ler arquivos de ROM localmente), é necessário servir o projeto através de um servidor HTTP simples.
+### Perfil `generic`
 
-1. Navegue até a pasta do projeto em seu terminal:
-   ```bash
-   cd nes-js-puro-v11
-   ```
-2. Inicie o servidor local (utilizando Python 3):
-   ```bash
-   python3 -m http.server 8080
-   ```
-3. Abra seu navegador de preferência e acesse:
-   ```text
-   http://localhost:8080
-   ```
-4. Clique em **Escolher arquivo**, selecione uma ROM válida do console com a extensão `.nes`, e clique em **▶️ Rodar**.
+Usado para outras ROMs.
 
----
+- sem hacks específicos;
+- comportamento mais neutro.
 
-## 💻 Tecnologias Utilizadas
+## Melhorias da v14
 
-- **Linguagem:** JavaScript Puro (ECMAScript 6+)
-- **Interface:** HTML5 & CSS3 moderno
-- **Renderização:** Canvas 2D API (Pixelated Rendering)
-- **Áudio:** Web Audio API (OscillatorNodes & Custom AudioBuffers)
+- base PPU v8 restaurada para MMC3
+- sistema de perfil automático por ROM
+- correções do Mario isoladas
+- Shadow of the Ninja não recebe hacks do Mario
+- Mario recebe apenas os fixes necessários
+- status mostra o perfil usado
+- mantém APU v7
+- mantém Mapper 0 e Mapper 4/MMC3 experimental
+
+## Como rodar
+
+```bash
+python3 -m http.server 8080
+```
+
+Abra:
+
+```text
+http://localhost:8080
+```
+
+Carregue a ROM e clique em **Rodar**.
+
+## Observação
+
+Essa versão prioriza estabilidade prática por jogo/perfil, em vez de aplicar correções globais que podem causar regressões.

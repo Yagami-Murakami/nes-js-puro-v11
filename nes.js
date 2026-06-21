@@ -73,6 +73,30 @@ class Cartridge {
       this.chrRam = true;
     }
 
+    this.prgRam = new Uint8Array(8192);
+
+    if (this.mapper === 1) {
+      this.mmc1 = {
+        shiftRegister: 0x10,
+        control: 0x0C,
+        chrBank0: 0,
+        chrBank1: 0,
+        prgBank: 0
+      };
+    }
+
+    if (this.mapper === 2) {
+      this.uxrom = {
+        prgBank: 0
+      };
+    }
+
+    if (this.mapper === 3) {
+      this.cnrom = {
+        chrBank: 0
+      };
+    }
+
     if (this.mapper === 4) {
       this.mmc3 = {
         bankSelect: 0,
@@ -96,7 +120,14 @@ class Cartridge {
       this.mmc3.regs[7] = 1;
     }
 
-    if (![0, 4].includes(this.mapper)) {
+    if (this.mapper === 7) {
+      this.axrom = {
+        prgBank: 0
+      };
+      this.mirroring = "one-screen-lower";
+    }
+
+    if (![0, 1, 2, 3, 4, 7].includes(this.mapper)) {
       throw new Error("Mapper ainda não suportado nesta versão: " + this.mapper);
     }
 
@@ -119,9 +150,45 @@ class Cartridge {
       };
     }
 
+    if (this.mapper === 1) {
+      return {
+        name: "mmc1_generic",
+        lockTopStatusBarScroll: false,
+        statusBarHeight: 0,
+        spriteZeroFallback: false
+      };
+    }
+
+    if (this.mapper === 2) {
+      return {
+        name: "uxrom_generic",
+        lockTopStatusBarScroll: false,
+        statusBarHeight: 0,
+        spriteZeroFallback: false
+      };
+    }
+
+    if (this.mapper === 3) {
+      return {
+        name: "cnrom_generic",
+        lockTopStatusBarScroll: false,
+        statusBarHeight: 0,
+        spriteZeroFallback: false
+      };
+    }
+
     if (this.mapper === 4) {
       return {
         name: "mmc3_v8_safe",
+        lockTopStatusBarScroll: false,
+        statusBarHeight: 0,
+        spriteZeroFallback: false
+      };
+    }
+
+    if (this.mapper === 7) {
+      return {
+        name: "axrom_generic",
         lockTopStatusBarScroll: false,
         statusBarHeight: 0,
         spriteZeroFallback: false
@@ -137,18 +204,35 @@ class Cartridge {
   }
 
   cpuRead(addr) {
+    if (addr >= 0x6000 && addr < 0x8000) {
+      return this.prgRam[addr & 0x1FFF];
+    }
     if (this.mapper === 0) return this.cpuReadMapper0(addr);
+    if (this.mapper === 1) return this.cpuReadMMC1(addr);
+    if (this.mapper === 2) return this.cpuReadMapper2(addr);
+    if (this.mapper === 3) return this.cpuReadMapper3(addr);
     if (this.mapper === 4) return this.cpuReadMMC3(addr);
+    if (this.mapper === 7) return this.cpuReadAxROM(addr);
     return 0;
   }
 
   cpuWrite(addr, value) {
     value &= 0xFF;
+    if (addr >= 0x6000 && addr < 0x8000) {
+      this.prgRam[addr & 0x1FFF] = value;
+      return;
+    }
+    if (this.mapper === 1) this.cpuWriteMMC1(addr, value);
+    if (this.mapper === 2) this.cpuWriteMapper2(addr, value);
+    if (this.mapper === 3) this.cpuWriteMapper3(addr, value);
     if (this.mapper === 4) this.cpuWriteMMC3(addr, value);
+    if (this.mapper === 7) this.cpuWriteAxROM(addr, value);
   }
 
   ppuRead(addr) {
     addr &= 0x1FFF;
+    if (this.mapper === 1) return this.ppuReadMMC1(addr);
+    if (this.mapper === 3) return this.ppuReadCNROM(addr);
     if (this.mapper === 4) return this.ppuReadMMC3(addr);
     return this.chr[addr % this.chr.length];
   }
@@ -156,8 +240,186 @@ class Cartridge {
   ppuWrite(addr, value) {
     addr &= 0x1FFF;
     value &= 0xFF;
+    if (this.mapper === 1) {
+      this.ppuWriteMMC1(addr, value);
+      return;
+    }
+    if (this.mapper === 4) {
+      this.ppuWriteMMC3(addr, value);
+      return;
+    }
     if (this.chrRam) this.chr[addr % this.chr.length] = value;
   }
+
+  cpuReadMMC1(addr) {
+    if (addr < 0x8000) return 0;
+    const total16k = Math.max(1, this.prg.length >> 14);
+    const prgMode = (this.mmc1.control >> 2) & 3;
+    let bank = 0;
+
+    if (prgMode === 0 || prgMode === 1) {
+      bank = (this.mmc1.prgBank & 0x0E) % total16k;
+      return this.prg[bank * 16384 + (addr - 0x8000)];
+    } else if (prgMode === 2) {
+      if (addr < 0xC000) {
+        return this.prg[addr - 0x8000];
+      } else {
+        bank = this.mmc1.prgBank % total16k;
+        return this.prg[bank * 16384 + (addr - 0xC000)];
+      }
+    } else {
+      if (addr < 0xC000) {
+        bank = this.mmc1.prgBank % total16k;
+        return this.prg[bank * 16384 + (addr - 0x8000)];
+      } else {
+        return this.prg[(total16k - 1) * 16384 + (addr - 0xC000)];
+      }
+    }
+  }
+
+  cpuWriteMMC1(addr, value) {
+    if (value & 0x80) {
+      this.mmc1.shiftRegister = 0x10;
+      this.mmc1.control |= 0x0C;
+      this.updateMMC1Mirroring();
+    } else {
+      const completed = (this.mmc1.shiftRegister & 1) !== 0;
+      this.mmc1.shiftRegister = (this.mmc1.shiftRegister >> 1) | ((value & 1) << 4);
+      if (completed) {
+        const regIndex = (addr >> 13) & 3;
+        const regValue = this.mmc1.shiftRegister & 0x1F;
+        if (regIndex === 0) {
+          this.mmc1.control = regValue;
+          this.updateMMC1Mirroring();
+        } else if (regIndex === 1) {
+          this.mmc1.chrBank0 = regValue;
+        } else if (regIndex === 2) {
+          this.mmc1.chrBank1 = regValue;
+        } else if (regIndex === 3) {
+          this.mmc1.prgBank = regValue;
+        }
+        this.mmc1.shiftRegister = 0x10;
+      }
+    }
+  }
+
+  updateMMC1Mirroring() {
+    const mirrorMode = this.mmc1.control & 3;
+    if (mirrorMode === 0) this.mirroring = "one-screen-lower";
+    else if (mirrorMode === 1) this.mirroring = "one-screen-upper";
+    else if (mirrorMode === 2) this.mirroring = "vertical";
+    else if (mirrorMode === 3) this.mirroring = "horizontal";
+  }
+
+  ppuReadMMC1(addr) {
+    const chrMode = (this.mmc1.control >> 4) & 1;
+    if (chrMode === 0) {
+      const total8k = Math.max(1, this.chr.length >> 13);
+      const bank = (this.mmc1.chrBank0 & 0x1E) % total8k;
+      return this.chr[bank * 8192 + (addr & 0x1FFF)];
+    } else {
+      const total4k = Math.max(1, this.chr.length >> 12);
+      if (addr < 0x1000) {
+        const bank = this.mmc1.chrBank0 % total4k;
+        return this.chr[bank * 4096 + (addr & 0x0FFF)];
+      } else {
+        const bank = this.mmc1.chrBank1 % total4k;
+        return this.chr[bank * 4096 + (addr & 0x0FFF)];
+      }
+    }
+  }
+
+  ppuWriteMMC1(addr, value) {
+    if (!this.chrRam) return;
+    const chrMode = (this.mmc1.control >> 4) & 1;
+    if (chrMode === 0) {
+      const total8k = Math.max(1, this.chr.length >> 13);
+      const bank = (this.mmc1.chrBank0 & 0x1E) % total8k;
+      this.chr[bank * 8192 + (addr & 0x1FFF)] = value;
+    } else {
+      const total4k = Math.max(1, this.chr.length >> 12);
+      if (addr < 0x1000) {
+        const bank = this.mmc1.chrBank0 % total4k;
+        this.chr[bank * 4096 + (addr & 0x0FFF)] = value;
+      } else {
+        const bank = this.mmc1.chrBank1 % total4k;
+        this.chr[bank * 4096 + (addr & 0x0FFF)] = value;
+      }
+    }
+  }
+
+  cpuReadMapper2(addr) {
+    if (addr < 0x8000) return 0;
+    const total16k = Math.max(1, this.prg.length >> 14);
+    if (addr < 0xC000) {
+      const bank = this.uxrom.prgBank % total16k;
+      return this.prg[bank * 16384 + (addr - 0x8000)];
+    } else {
+      return this.prg[(total16k - 1) * 16384 + (addr - 0xC000)];
+    }
+  }
+
+  cpuWriteMapper2(addr, value) {
+    if (addr >= 0x8000) {
+      this.uxrom.prgBank = value;
+    }
+  }
+
+  cpuWriteMapper3(addr, value) {
+    if (addr >= 0x8000) {
+      this.cnrom.chrBank = value;
+    }
+  }
+
+  ppuReadCNROM(addr) {
+    const total8k = Math.max(1, this.chr.length >> 13);
+    const bank = this.cnrom.chrBank % total8k;
+    return this.chr[bank * 8192 + (addr & 0x1FFF)];
+  }
+
+  cpuReadAxROM(addr) {
+    if (addr < 0x8000) return 0;
+    const total32k = Math.max(1, this.prg.length >> 15);
+    const bank = this.axrom.prgBank % total32k;
+    return this.prg[bank * 32768 + (addr - 0x8000)];
+  }
+
+  cpuWriteAxROM(addr, value) {
+    if (addr >= 0x8000) {
+      this.axrom.prgBank = value & 0x07;
+      this.mirroring = (value & 0x10) ? "one-screen-upper" : "one-screen-lower";
+    }
+  }
+
+  ppuWriteMMC3(addr, value) {
+    if (!this.chrRam) return;
+    const total1k = this.chr.length >> 10;
+    if (total1k <= 0) return;
+
+    const r = this.mmc3.regs;
+    let bank = 0;
+
+    if (!this.mmc3.chrMode) {
+      if (addr < 0x0800) bank = (r[0] & 0xFE) + ((addr >> 10) & 1);
+      else if (addr < 0x1000) bank = (r[1] & 0xFE) + ((addr >> 10) & 1);
+      else if (addr < 0x1400) bank = r[2];
+      else if (addr < 0x1800) bank = r[3];
+      else if (addr < 0x1C00) bank = r[4];
+      else bank = r[5];
+    } else {
+      if (addr < 0x0400) bank = r[2];
+      else if (addr < 0x0800) bank = r[3];
+      else if (addr < 0x0C00) bank = r[4];
+      else if (addr < 0x1000) bank = r[5];
+      else if (addr < 0x1800) bank = (r[0] & 0xFE) + ((addr >> 10) & 1);
+      else bank = (r[1] & 0xFE) + ((addr >> 10) & 1);
+    }
+
+    bank %= total1k;
+    const offset = bank * 0x400 + (addr & 0x3FF);
+    this.chr[offset % this.chr.length] = value;
+  }
+
 
   cpuReadMapper0(addr) {
     if (addr >= 0x8000) {
@@ -312,6 +574,7 @@ class SimpleAPU {
     };
 
     this.frameStep = 0;
+    this.volumeLevel = 0.30;
   }
 
   start() {
@@ -328,22 +591,28 @@ class SimpleAPU {
     this.audioCtx = new AudioCtx();
 
     this.masterGain = this.audioCtx.createGain();
-    this.masterGain.gain.value = 0.30;
+    this.masterGain.gain.value = this.volumeLevel;
 
     this.filter = this.audioCtx.createBiquadFilter();
     this.filter.type = "lowpass";
-    this.filter.frequency.value = 12000;
+    this.filter.frequency.value = 14000;
     this.filter.Q.value = 0.4;
 
+    this.highpass = this.audioCtx.createBiquadFilter();
+    this.highpass.type = "highpass";
+    this.highpass.frequency.value = 90;
+    this.highpass.Q.value = 0.4;
+
     this.compressor = this.audioCtx.createDynamicsCompressor();
-    this.compressor.threshold.value = -20;
-    this.compressor.knee.value = 18;
-    this.compressor.ratio.value = 5;
-    this.compressor.attack.value = 0.003;
-    this.compressor.release.value = 0.12;
+    this.compressor.threshold.value = -12;
+    this.compressor.knee.value = 10;
+    this.compressor.ratio.value = 3;
+    this.compressor.attack.value = 0.001;
+    this.compressor.release.value = 0.08;
 
     this.masterGain.connect(this.filter);
-    this.filter.connect(this.compressor);
+    this.filter.connect(this.highpass);
+    this.highpass.connect(this.compressor);
     this.compressor.connect(this.audioCtx.destination);
 
     this.channels = [
@@ -402,7 +671,7 @@ class SimpleAPU {
   }
 
   createNoiseChannel() {
-    const node = this.audioCtx.createScriptProcessor(1024, 0, 1);
+    const node = this.audioCtx.createScriptProcessor(2048, 0, 1);
     const gain = this.audioCtx.createGain();
 
     const state = {
@@ -442,7 +711,7 @@ class SimpleAPU {
   }
 
   createDMCChannel() {
-    const node = this.audioCtx.createScriptProcessor(1024, 0, 1);
+    const node = this.audioCtx.createScriptProcessor(2048, 0, 1);
     const gain = this.audioCtx.createGain();
 
     const state = {
@@ -546,8 +815,15 @@ class SimpleAPU {
     this.muted = value;
     if (!this.masterGain || !this.audioCtx) return;
 
-    const target = value ? 0 : 0.30;
+    const target = value ? 0 : this.volumeLevel;
     this.masterGain.gain.setTargetAtTime(target, this.audioCtx.currentTime, 0.025);
+  }
+
+  setVolume(value) {
+    this.volumeLevel = value;
+    if (this.masterGain && !this.muted) {
+      this.masterGain.gain.setValueAtTime(value, this.audioCtx.currentTime);
+    }
   }
 
   readRegister(addr) {
@@ -768,21 +1044,20 @@ class SimpleAPU {
     }
 
     if (!enabled || timer < 8 || this.lengthCounters[channelIndex] <= 0) {
-      ch.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.006);
+      ch.gain.gain.setValueAtTime(0, this.audioCtx.currentTime);
       return;
     }
 
     const freq = CPU_CLOCK / (16 * (timer + 1));
-    const gain = Math.min(0.060, (vol / 15) * 0.060);
+    const gain = Math.min(0.055, (vol / 15) * 0.055);
 
     ch.timer = timer;
-    ch.osc.frequency.setTargetAtTime(
+    ch.osc.frequency.setValueAtTime(
       Math.max(20, Math.min(12000, freq)),
-      this.audioCtx.currentTime,
-      0.0018
+      this.audioCtx.currentTime
     );
 
-    ch.gain.gain.setTargetAtTime(gain, this.audioCtx.currentTime, 0.006);
+    ch.gain.gain.setValueAtTime(gain, this.audioCtx.currentTime);
   }
 
   updateTriangle() {
@@ -793,19 +1068,18 @@ class SimpleAPU {
     const timer = this.regs[0x0A] | ((this.regs[0x0B] & 0x07) << 8);
 
     if (!enabled || timer < 2 || this.lengthCounters[2] <= 0 || this.triangleLinear.counter <= 0) {
-      ch.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.006);
+      ch.gain.gain.setValueAtTime(0, this.audioCtx.currentTime);
       return;
     }
 
     const freq = CPU_CLOCK / (32 * (timer + 1));
 
-    ch.osc.frequency.setTargetAtTime(
+    ch.osc.frequency.setValueAtTime(
       Math.max(20, Math.min(12000, freq)),
-      this.audioCtx.currentTime,
-      0.0018
+      this.audioCtx.currentTime
     );
 
-    ch.gain.gain.setTargetAtTime(0.048, this.audioCtx.currentTime, 0.006);
+    ch.gain.gain.setValueAtTime(0.048, this.audioCtx.currentTime);
   }
 
   updateNoise() {
@@ -828,12 +1102,12 @@ class SimpleAPU {
     this.noise.state.mode = mode;
 
     if (!enabled || this.lengthCounters[3] <= 0) {
-      this.noise.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.005);
+      this.noise.gain.gain.setValueAtTime(0, this.audioCtx.currentTime);
       return;
     }
 
-    const gain = Math.min(0.075, (vol / 15) * 0.075);
-    this.noise.gain.gain.setTargetAtTime(gain, this.audioCtx.currentTime, 0.005);
+    const gain = Math.min(0.065, (vol / 15) * 0.065);
+    this.noise.gain.gain.setValueAtTime(gain, this.audioCtx.currentTime);
   }
 
   restartDMC() {
@@ -871,7 +1145,7 @@ class SimpleAPU {
     this.dmc.state.sampleLength = ((this.regs[0x13] & 0xFF) << 4) + 1;
 
     if (!enabled) {
-      this.dmc.gain.gain.setTargetAtTime(0, this.audioCtx.currentTime, 0.008);
+      this.dmc.gain.gain.setValueAtTime(0, this.audioCtx.currentTime);
       return;
     }
 
@@ -879,7 +1153,7 @@ class SimpleAPU {
       this.restartDMC();
     }
 
-    this.dmc.gain.gain.setTargetAtTime(0.030, this.audioCtx.currentTime, 0.008);
+    this.dmc.gain.gain.setValueAtTime(0.025, this.audioCtx.currentTime);
   }
 }
 
@@ -915,7 +1189,7 @@ class Bus {
       return this.apu ? this.apu.readRegister(addr) : 0;
     }
 
-    if (addr >= 0x8000) return this.cart ? this.cart.cpuRead(addr) : 0;
+    if (addr >= 0x6000) return this.cart ? this.cart.cpuRead(addr) : 0;
 
     return 0;
   }
@@ -954,8 +1228,8 @@ class Bus {
       return;
     }
 
-    if (addr >= 0x8000 && this.cart && this.cart.cpuWrite) {
-      this.cart.cpuWrite(addr, value);
+    if (addr >= 0x6000) {
+      if (this.cart && this.cart.cpuWrite) this.cart.cpuWrite(addr, value);
       return;
     }
   }
@@ -1408,8 +1682,39 @@ class CPU6502 {
         this.cycles = 2;
         break;
 
+      // NOPs não oficiais de 2 bytes (consomem 1 byte de argumento)
+      case 0x04: case 0x14: case 0x34: case 0x44: case 0x54: case 0x64:
+      case 0x74: case 0x80: case 0x82: case 0x89: case 0xC2: case 0xD4:
+      case 0xE2: case 0xF4:
+        this.pc = (this.pc + 1) & 0xFFFF;
+        this.cycles = 3;
+        break;
+
+      // NOPs não oficiais de 3 bytes (consomem 2 bytes de argumento)
+      case 0x0C: case 0x1C: case 0x3C: case 0x5C: case 0x7C: case 0xDC:
+      case 0xFC:
+        this.pc = (this.pc + 2) & 0xFFFF;
+        this.cycles = 4;
+        break;
+
+      // LAX não oficial (carrega A e X com o mesmo valor)
+      case 0xA7: this.a = this.x = this.read(this.zp()); this.setZN(this.a); this.cycles=3; break;
+      case 0xB7: this.a = this.x = this.read(this.zpy()); this.setZN(this.a); this.cycles=4; break;
+      case 0xAF: this.a = this.x = this.read(this.abs()); this.setZN(this.a); this.cycles=4; break;
+      case 0xBF: this.a = this.x = this.read(this.absy()); this.setZN(this.a); this.cycles=4; break;
+      case 0xA3: this.a = this.x = this.read(this.indx()); this.setZN(this.a); this.cycles=6; break;
+      case 0xB3: this.a = this.x = this.read(this.indy()); this.setZN(this.a); this.cycles=5; break;
+
+      // SAX não oficial (armazena A AND X na memória)
+      case 0x87: this.write(this.zp(), this.a & this.x); this.cycles=3; break;
+      case 0x97: this.write(this.zpy(), this.a & this.x); this.cycles=4; break;
+      case 0x8F: this.write(this.abs(), this.a & this.x); this.cycles=4; break;
+      case 0x83: this.write(this.indx(), this.a & this.x); this.cycles=6; break;
+
       default:
-        throw new Error("Opcode não implementado: $" + op.toString(16).padStart(2,"0") + " PC=$" + opAddr.toString(16));
+        console.warn("Opcode não-oficial ignorado: $" + op.toString(16).padStart(2,"0") + " PC=$" + opAddr.toString(16));
+        this.cycles = 2;
+        break;
     }
 
     this.cycles--;
@@ -1515,8 +1820,18 @@ class PPU {
 
     if (!this.bus.cart) return offset & 0x07FF;
 
-    if (this.bus.cart.mirroring === "vertical") {
+    const mode = this.bus.cart.mirroring;
+    if (mode === "vertical") {
       return ((table & 1) * 0x400 + offset) & 0x07FF;
+    }
+    if (mode === "horizontal") {
+      return (((table >> 1) & 1) * 0x400 + offset) & 0x07FF;
+    }
+    if (mode === "one-screen-lower" || mode === "onescreen0") {
+      return offset;
+    }
+    if (mode === "one-screen-upper" || mode === "onescreen1") {
+      return 0x400 + offset;
     }
 
     return (((table >> 1) & 1) * 0x400 + offset) & 0x07FF;
@@ -1961,6 +2276,8 @@ class NES {
   }
 
   runFrame() {
+    this.bus.controller = keyboardControllerVal | pollGamepad();
+
     for (let i = 0; i < FRAME_CPU_CYCLES; i++) {
       try {
         this.cpu.step();
@@ -2010,6 +2327,10 @@ class NES {
       }
     }
 
+    if (window.runCpuMonitorUpdate) {
+      window.runCpuMonitorUpdate();
+    }
+
     requestAnimationFrame((t) => this.loop(t));
   }
 
@@ -2037,25 +2358,140 @@ class NES {
     this.apu.setMuted(this.paused);
     statusEl.textContent = this.statusBase + (this.paused ? " | Pausado" : " | Executando");
   }
+
+  saveState() {
+    if (!this.bus.cart) return null;
+    
+    const state = {
+      cpu: {
+        a: this.cpu.a,
+        x: this.cpu.x,
+        y: this.cpu.y,
+        sp: this.cpu.sp,
+        pc: this.cpu.pc,
+        p: this.cpu.p,
+        cycles: this.cpu.cycles
+      },
+      ppu: {
+        ctrl: this.ppu.ctrl,
+        mask: this.ppu.mask,
+        status: this.ppu.status,
+        oamAddr: this.ppu.oamAddr,
+        oam: Array.from(this.ppu.oam),
+        vram: Array.from(this.ppu.vram),
+        palette: Array.from(this.ppu.palette),
+        ppuAddr: this.ppu.ppuAddr,
+        tempAddr: this.ppu.tempAddr,
+        fineX: this.ppu.fineX,
+        writeToggle: this.ppu.writeToggle,
+        scrollX: this.ppu.scrollX,
+        scrollY: this.ppu.scrollY,
+        scrollNt: this.ppu.scrollNt,
+        readBuffer: this.ppu.readBuffer,
+        cycles: this.ppu.cycles,
+        scanline: this.ppu.scanline,
+        frame: this.ppu.frame,
+        nmiRequested: this.ppu.nmiRequested
+      },
+      bus: {
+        ram: Array.from(this.bus.ram)
+      },
+      cart: {
+        mirroring: this.bus.cart.mirroring,
+        prgRam: Array.from(this.bus.cart.prgRam),
+        chr: this.bus.cart.chrRam ? Array.from(this.bus.cart.chr) : null
+      }
+    };
+
+    if (this.bus.cart.mapper === 1) state.cart.mmc1 = JSON.parse(JSON.stringify(this.bus.cart.mmc1));
+    if (this.bus.cart.mapper === 2) state.cart.uxrom = JSON.parse(JSON.stringify(this.bus.cart.uxrom));
+    if (this.bus.cart.mapper === 3) state.cart.cnrom = JSON.parse(JSON.stringify(this.bus.cart.cnrom));
+    if (this.bus.cart.mapper === 4) {
+      state.cart.mmc3 = {
+        bankSelect: this.bus.cart.mmc3.bankSelect,
+        regs: Array.from(this.bus.cart.mmc3.regs),
+        prgMode: this.bus.cart.mmc3.prgMode,
+        chrMode: this.bus.cart.mmc3.chrMode,
+        irqReload: this.bus.cart.mmc3.irqReload,
+        irqCounter: this.bus.cart.mmc3.irqCounter,
+        irqEnable: this.bus.cart.mmc3.irqEnable,
+        irqPending: this.bus.cart.mmc3.irqPending
+      };
+    }
+    if (this.bus.cart.mapper === 7) state.cart.axrom = JSON.parse(JSON.stringify(this.bus.cart.axrom));
+
+    return state;
+  }
+
+  loadState(state) {
+    if (!this.bus.cart || !state) return false;
+
+    // CPU
+    this.cpu.a = state.cpu.a;
+    this.cpu.x = state.cpu.x;
+    this.cpu.y = state.cpu.y;
+    this.cpu.sp = state.cpu.sp;
+    this.cpu.pc = state.cpu.pc;
+    this.cpu.p = state.cpu.p;
+    this.cpu.cycles = state.cpu.cycles;
+
+    // PPU
+    this.ppu.ctrl = state.ppu.ctrl;
+    this.ppu.mask = state.ppu.mask;
+    this.ppu.status = state.ppu.status;
+    this.ppu.oamAddr = state.ppu.oamAddr;
+    this.ppu.oam.set(state.ppu.oam);
+    this.ppu.vram.set(state.ppu.vram);
+    this.ppu.palette.set(state.ppu.palette);
+    this.ppu.ppuAddr = state.ppu.ppuAddr;
+    this.ppu.tempAddr = state.ppu.tempAddr;
+    this.ppu.fineX = state.ppu.fineX;
+    this.ppu.writeToggle = state.ppu.writeToggle;
+    this.ppu.scrollX = state.ppu.scrollX;
+    this.ppu.scrollY = state.ppu.scrollY;
+    this.ppu.scrollNt = state.ppu.scrollNt;
+    this.ppu.readBuffer = state.ppu.readBuffer;
+    this.ppu.cycles = state.ppu.cycles;
+    this.ppu.scanline = state.ppu.scanline;
+    this.ppu.frame = state.ppu.frame;
+    this.ppu.nmiRequested = state.ppu.nmiRequested;
+
+    // Bus
+    this.bus.ram.set(state.bus.ram);
+
+    // Cartridge
+    this.bus.cart.mirroring = state.cart.mirroring;
+    this.bus.cart.prgRam.set(state.cart.prgRam);
+    if (this.bus.cart.chrRam && state.cart.chr) {
+      this.bus.cart.chr.set(state.cart.chr);
+    }
+
+    if (this.bus.cart.mapper === 1 && state.cart.mmc1) this.bus.cart.mmc1 = state.cart.mmc1;
+    if (this.bus.cart.mapper === 2 && state.cart.uxrom) this.bus.cart.uxrom = state.cart.uxrom;
+    if (this.bus.cart.mapper === 3 && state.cart.cnrom) this.bus.cart.cnrom = state.cart.cnrom;
+    if (this.bus.cart.mapper === 4 && state.cart.mmc3) {
+      this.bus.cart.mmc3.bankSelect = state.cart.mmc3.bankSelect;
+      this.bus.cart.mmc3.regs.set(state.cart.mmc3.regs);
+      this.bus.cart.mmc3.prgMode = state.cart.mmc3.prgMode;
+      this.bus.cart.mmc3.chrMode = state.cart.mmc3.chrMode;
+      this.bus.cart.mmc3.irqReload = state.cart.mmc3.irqReload;
+      this.bus.cart.mmc3.irqCounter = state.cart.mmc3.irqCounter;
+      this.bus.cart.mmc3.irqEnable = state.cart.mmc3.irqEnable;
+      this.bus.cart.mmc3.irqPending = state.cart.mmc3.irqPending;
+    }
+    if (this.bus.cart.mapper === 7 && state.cart.axrom) this.bus.cart.axrom = state.cart.axrom;
+
+    return true;
+  }
 }
 
 const nes = new NES();
-
-document.getElementById("romInput").addEventListener("change", async e => {
-  const file = e.target.files[0];
-  if (!file) return;
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  try {
-    nes.load(bytes);
-  } catch (err) {
-    statusEl.textContent = "Erro: " + err.message;
-  }
-});
 
 document.getElementById("btnRun").onclick = () => nes.start();
 document.getElementById("btnReset").onclick = () => nes.reset();
 document.getElementById("btnPause").onclick = () => nes.pause();
 
+let keyboardControllerVal = 0;
 const keys = {};
 window.addEventListener("keydown", e => {
   keys[e.code] = true;
@@ -2077,7 +2513,45 @@ function updateController() {
   if (keys["ArrowDown"]) c |= 1 << 2;
   if (keys["ArrowLeft"]) c |= 1 << 1;
   if (keys["ArrowRight"]) c |= 1 << 0;
-  nes.bus.controller = c;
+  keyboardControllerVal = c;
+  nes.bus.controller = keyboardControllerVal | pollGamepad();
+}
+
+function pollGamepad() {
+  const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+  let gamepadVal = 0;
+
+  for (let i = 0; i < gamepads.length; i++) {
+    const gp = gamepads[i];
+    if (gp && gp.connected) {
+      // Mapeamento padrão NES: A=bit7, B=bit6, Select=bit5, Start=bit4, Up=bit3, Down=bit2, Left=bit1, Right=bit0
+      // Mapeamento padrão HTML5 Gamepad (Xbox/Playstation Layout):
+      if (gp.buttons[0] && gp.buttons[0].pressed) gamepadVal |= 1 << 7; // A
+      if (gp.buttons[1] && gp.buttons[1].pressed) gamepadVal |= 1 << 6; // B
+      if (gp.buttons[2] && gp.buttons[2].pressed) gamepadVal |= 1 << 6; // B alternativo
+      if (gp.buttons[3] && gp.buttons[3].pressed) gamepadVal |= 1 << 7; // A alternativo
+      if (gp.buttons[8] && gp.buttons[8].pressed) gamepadVal |= 1 << 5; // Select
+      if (gp.buttons[9] && gp.buttons[9].pressed) gamepadVal |= 1 << 4; // Start
+
+      // D-Pad
+      if (gp.buttons[12] && gp.buttons[12].pressed) gamepadVal |= 1 << 3; // Up
+      if (gp.buttons[13] && gp.buttons[13].pressed) gamepadVal |= 1 << 2; // Down
+      if (gp.buttons[14] && gp.buttons[14].pressed) gamepadVal |= 1 << 1; // Left
+      if (gp.buttons[15] && gp.buttons[15].pressed) gamepadVal |= 1 << 0; // Right
+
+      // Direcional Analógico Esquerdo (como alternativa de D-Pad)
+      if (gp.axes && gp.axes.length >= 2) {
+        const axisX = gp.axes[0];
+        const axisY = gp.axes[1];
+        if (axisY < -0.5) gamepadVal |= 1 << 3; // Up
+        if (axisY > 0.5)  gamepadVal |= 1 << 2; // Down
+        if (axisX < -0.5) gamepadVal |= 1 << 1; // Left
+        if (axisX > 0.5)  gamepadVal |= 1 << 0; // Right
+      }
+      break; // Usa apenas o primeiro controle ativo encontrado
+    }
+  }
+  return gamepadVal;
 }
 
 // tela inicial

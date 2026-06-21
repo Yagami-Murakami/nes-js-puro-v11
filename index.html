@@ -3,59 +3,440 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>NES Emulator JS Puro</title>
+  <title>NES Emulator JS Puro v15</title>
+  <!-- Google Fonts Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #111827;
-      --card: #1f2937;
-      --accent: #ef4444;
-      --text: #f9fafb;
+      --bg: #090d16;
+      --card-bg: rgba(17, 24, 39, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #ff4757;
+      --accent-glow: rgba(255, 71, 87, 0.4);
+      --primary: #6366f1;
+      --primary-glow: rgba(99, 102, 241, 0.4);
+      --success: #10b981;
+      --text: #f3f4f6;
       --muted: #9ca3af;
-      --border: #374151;
+      --highlight: #facc15;
     }
 
-    * { box-sizing: border-box; }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
 
     body {
-      margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at top, #1e293b, var(--bg));
+      background: radial-gradient(circle at 50% 0%, #1e1b4b 0%, #0f172a 50%, var(--bg) 100%);
       color: var(--text);
-      font-family: Arial, sans-serif;
+      font-family: 'Inter', sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 40px 20px;
+      overflow-x: hidden;
     }
 
     .app {
       width: 100%;
-      max-width: 920px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      padding: 24px;
-      box-shadow: 0 20px 60px rgba(0,0,0,.45);
+      max-width: 1100px;
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 32px;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+      animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .app.layout-large {
+      max-width: 1280px;
+    }
+
+    .app.layout-giant {
+      max-width: 1480px;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    header {
+      margin-bottom: 28px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 24px;
+    }
+
+    .title-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
     }
 
     h1 {
-      margin: 0 0 8px;
-      color: var(--accent);
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.2rem;
+      font-weight: 800;
+      background: linear-gradient(135deg, #ff7675, #6c5ce7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    p {
+    .version-badge {
+      background: linear-gradient(135deg, var(--primary), #a855f7);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    .subtitle {
       color: var(--muted);
-      margin-top: 0;
-      line-height: 1.5;
+      margin-top: 8px;
+      font-size: 0.95rem;
+      line-height: 1.6;
     }
 
-    .screen {
-      background: #000;
-      border: 2px solid var(--border);
+    .mappers-list {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .mapper-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.75rem;
+      color: var(--text);
+      padding: 4px 10px;
+      border-radius: 8px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s ease;
+    }
+
+    .mapper-badge.active {
+      background: rgba(16, 185, 129, 0.15);
+      border-color: var(--success);
+      color: #34d399;
+    }
+
+    .mapper-badge:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-1px);
+    }
+
+    .main-layout {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 32px;
+    }
+
+    @media (max-width: 850px) {
+      .main-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Tela CRT Vintage */
+    .screen-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    /* Gabinete de madeira da TV antiga */
+    .tv-cabinet {
+      position: relative;
+      background: linear-gradient(135deg, #2d1f18 0%, #1a120e 100%);
+      border: 14px solid #3d2b20;
+      border-radius: 36px;
+      padding: 20px 94px 20px 20px;
+      box-shadow: 
+        0 30px 60px rgba(0, 0, 0, 0.8),
+        inset 0 4px 10px rgba(255, 255, 255, 0.1),
+        inset 0 -4px 10px rgba(0, 0, 0, 0.7);
+      width: 100%;
+      max-width: 520px; /* Tamanho 1: Padrão */
+      box-sizing: border-box;
+      transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tv-cabinet.tv-large {
+      max-width: 680px; /* Tamanho 2: Grande */
+    }
+
+    .tv-cabinet.tv-giant {
+      max-width: 860px; /* Tamanho 3: Gigante */
+    }
+
+    /* Painel de controle lateral da TV antiga */
+    .tv-side-panel {
+      position: absolute;
+      right: 14px;
+      top: 24px;
+      bottom: 24px;
+      width: 60px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(180deg, #1e1510 0%, #100b08 100%);
+      border: 2px solid #0f0a07;
       border-radius: 12px;
+      padding: 16px 0;
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.8), 0 1px 2px rgba(255,255,255,0.05);
+      box-sizing: border-box;
+    }
+
+    .tv-dial-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      position: relative;
+    }
+
+    .tv-dial-label {
+      font-size: 0.55rem;
+      font-weight: 800;
+      color: #926649;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      font-family: 'Outfit', sans-serif;
+      text-align: center;
+    }
+
+    .tv-dial-container {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tv-dial-ticks {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .tv-dial-ticks .tick {
+      position: absolute;
+      width: 3px;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 50%;
+      left: calc(50% - 1.5px);
+      top: calc(50% - 1.5px);
+      transition: all 0.2s ease;
+    }
+
+    .tv-dial-ticks .tick.active {
+      background: #facc15;
+      box-shadow: 0 0 6px rgba(250, 204, 21, 0.9);
+      transform: scale(1.4);
+    }
+
+    .tv-dial {
+      width: 34px;
+      height: 34px;
+      background: radial-gradient(circle at 35% 35%, #555 0%, #222 70%, #111 100%);
+      border-radius: 50%;
+      border: 2px solid #0a0a0a;
+      box-shadow: 
+        0 4px 6px rgba(0,0,0,0.6), 
+        inset 0 1px 1px rgba(255,255,255,0.2), 
+        inset 0 -1px 2px rgba(0,0,0,0.8);
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    .tv-dial::after {
+      content: '';
+      position: absolute;
+      width: 3px;
+      height: 9px;
+      background: #facc15;
+      top: 3px;
+      left: calc(50% - 1.5px);
+      border-radius: 1.5px;
+      box-shadow: 0 0 2px rgba(250, 204, 21, 0.5);
+    }
+
+    /* Botão Power Retro */
+    .tv-power-btn {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+      border: 2px solid #7f1d1d;
+      border-radius: 50%;
+      cursor: pointer;
+      box-shadow: 
+        0 3px 0 #7f1d1d, 
+        0 4px 6px rgba(0,0,0,0.6),
+        inset 0 1px 1px rgba(255,255,255,0.2);
+      transition: all 0.1s ease;
+      padding: 0;
+    }
+
+    .tv-power-btn.pushed {
+      transform: translateY(2px);
+      box-shadow: 
+        0 1px 0 #7f1d1d, 
+        0 2px 3px rgba(0,0,0,0.6),
+        inset 0 1px 3px rgba(0,0,0,0.5);
+      background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+    }
+
+    .tv-speaker-grille {
+      width: 44px;
+      height: 60px;
+      background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 3px,
+        #0a0a0a 3px,
+        #0a0a0a 5px
+      );
+      opacity: 0.8;
+      border-radius: 4px;
+      box-shadow: inset 0 1px 3px rgba(0,0,0,0.9);
+      background-color: #1a1310;
+    }
+
+    .tv-power-led {
+      width: 10px;
+      height: 10px;
+      background: #ef4444;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
+      transition: all 0.3s ease;
+    }
+
+    /* Moldura plástica interna e curvada da tela */
+    .screen {
+      background: #0b0f19;
+      border: 14px solid #181d26;
+      border-radius: 24px;
       overflow: hidden;
-      margin-top: 18px;
+      position: relative;
       aspect-ratio: 256 / 240;
+      box-shadow: 
+        inset 0 10px 30px rgba(0, 0, 0, 0.95),
+        0 4px 10px rgba(0, 0, 0, 0.5);
+      width: 100%;
+    }
+
+    /* Efeito CRT (Linhas de Scan) - Ativo apenas com crt-active */
+    .tv-cabinet.crt-active .screen::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0; left: 0; bottom: 0; right: 0;
+      background: 
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.04));
+      background-size: 100% 3px, 6px 100%;
+      z-index: 10;
+      pointer-events: none;
+      opacity: 0.85;
+      animation: flicker 0.15s infinite;
+    }
+
+    @keyframes flicker {
+      0% { opacity: 0.82; }
+      50% { opacity: 0.86; }
+      100% { opacity: 0.82; }
+    }
+
+    /* Glow de fósforo curvado - Ativo apenas com crt-active */
+    .tv-cabinet.crt-active .crt-glow {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: radial-gradient(circle, transparent 50%, rgba(0, 0, 0, 0.75) 120%);
+      pointer-events: none;
+      z-index: 9;
+      mix-blend-mode: multiply;
+    }
+
+    /* Efeito de desligar CRT */
+    .screen-off-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #000;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+    }
+
+    .tv-off .screen-off-overlay {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Animação de colapso CRT */
+    .tv-off .screen-off-overlay::before {
+      content: '';
+      position: absolute;
+      background: #fff;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 4px;
+      transform: scaleY(1) scaleX(1);
+      box-shadow: 0 0 15px #fff, 0 0 30px #fff;
+      animation: crtCollapse 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+    }
+
+    @keyframes crtCollapse {
+      0% {
+        transform: scaleY(1) scaleX(1);
+        opacity: 1;
+      }
+      40% {
+        transform: scaleY(0.01) scaleX(1);
+        height: 2px;
+        opacity: 1;
+      }
+      85% {
+        transform: scaleY(0.01) scaleX(0.01);
+        width: 4px;
+        left: 50%;
+        right: 50%;
+        opacity: 1;
+      }
+      100% {
+        transform: scaleY(0) scaleX(0);
+        opacity: 0;
+      }
     }
 
     canvas {
@@ -63,72 +444,1791 @@
       height: 100%;
       display: block;
       image-rendering: pixelated;
+      transform: scale(1.01);
     }
 
-    .controls {
+    /* Painel de Controle Lateral */
+    .control-panel {
       display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-top: 18px;
-      align-items: center;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
     }
 
-    input, button {
-      background: #374151;
-      color: white;
-      border: 1px solid #4b5563;
-      border-radius: 10px;
-      padding: 10px 14px;
+    .file-upload-area {
+      position: relative;
+      border: 2px dashed rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 24px;
+      text-align: center;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(255, 255, 255, 0.02);
       cursor: pointer;
     }
 
-    button:hover, input:hover {
-      border-color: var(--accent);
+    .file-upload-area:hover {
+      border-color: var(--primary);
+      background: rgba(99, 102, 241, 0.05);
+      transform: translateY(-2px);
     }
 
-    .status {
-      margin-top: 14px;
+    .file-upload-area input[type="file"] {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .upload-icon {
+      font-size: 2rem;
+      margin-bottom: 8px;
+      display: inline-block;
+      transition: transform 0.3s ease;
+    }
+
+    .file-upload-area:hover .upload-icon {
+      transform: translateY(-4px);
+    }
+
+    .upload-text {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .upload-subtext {
+      font-size: 0.75rem;
       color: var(--muted);
-      font-size: 14px;
+      margin-top: 4px;
     }
 
-    code {
-      background: #111827;
-      padding: 2px 5px;
-      border-radius: 5px;
-      color: #facc15;
+    .action-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      background: rgba(255, 255, 255, 0.05);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      font-family: inherit;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    #btnRun {
+      background: linear-gradient(135deg, var(--primary), #4f46e5);
+      border: none;
+      box-shadow: 0 4px 12px var(--primary-glow);
+    }
+
+    #btnRun:hover {
+      box-shadow: 0 6px 16px rgba(99, 102, 241, 0.6);
+      filter: brightness(1.1);
+    }
+
+    #btnReset {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    #btnReset:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    #btnPause {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+
+    #btnPause:hover {
+      background: rgba(239, 68, 68, 0.25);
+      border-color: #ef4444;
+      color: white;
+    }
+
+    /* Status Display */
+    .status-card {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 16px 20px;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    .status-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .status-text {
+      color: #e2e8f0;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Instruções */
+    .info-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: 16px;
+      padding: 20px;
+    }
+
+    .info-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--highlight);
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      font-size: 0.8rem;
+    }
+
+    .control-item {
+      display: flex;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.02);
+    }
+
+    .control-item span:first-child {
+      color: var(--muted);
+    }
+
+    .control-item span:last-child {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* CONSOLE FAMICOM JAPONÊS */
+    .famicom-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+      position: relative;
+      perspective: 800px;
+      width: 100%;
+      max-width: 520px;
+      transition: max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tv-cabinet.tv-large ~ .famicom-container {
+      max-width: 680px;
+    }
+
+    .tv-cabinet.tv-giant ~ .famicom-container {
+      max-width: 860px;
+    }
+
+    .tv-shelf {
+      width: 100%;
+      height: 10px;
+      background: linear-gradient(180deg, #3d2b20 0%, #1a120e 100%);
+      border-radius: 4px;
+      box-shadow: 
+        0 4px 10px rgba(0,0,0,0.9),
+        0 1px 2px rgba(255,255,255,0.05);
+      border-bottom: 2px solid #110b08;
+      margin-top: 4px;
+    }
+
+    .famicom-console {
+      width: 250px;
+      height: 52px;
+      background: #f0ede4;
+      border-radius: 6px 6px 10px 10px;
+      position: relative;
+      border: 3px solid #d4cfc0;
+      box-shadow: 
+        0 15px 25px rgba(0,0,0,0.6),
+        inset 0 2px 2px rgba(255,255,255,0.8);
+      transform-style: preserve-3d;
+      transform: rotateX(10deg);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      margin-bottom: -6px;
+      z-index: 2;
+    }
+
+    .famicom-console::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 40px;
+      height: 100%;
+      background: #8b0000;
+      border-radius: 3px 0 0 7px;
+      border-right: 3px solid #600000;
+      box-shadow: inset 2px 2px 2px rgba(255,255,255,0.15);
+    }
+    
+    .famicom-console::after {
+      content: '';
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 40px;
+      height: 100%;
+      background: #8b0000;
+      border-radius: 0 3px 7px 0;
+      border-left: 3px solid #600000;
+      box-shadow: inset -2px 2px 2px rgba(255,255,255,0.15);
+    }
+
+    .famicom-gold-plate {
+      position: absolute;
+      bottom: 28px;
+      left: calc(50% - 35px);
+      width: 70px;
+      height: 10px;
+      background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%);
+      border: 1px solid #8c6205;
+      border-radius: 1px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      z-index: 5;
+    }
+
+    .famicom-gold-plate-text {
+      font-size: 0.38rem;
+      font-weight: 800;
+      color: #8b0000;
+      letter-spacing: 0.3px;
+      font-family: 'Outfit', sans-serif;
+      text-transform: uppercase;
+    }
+
+    .famicom-slot-wrapper {
+      width: 120px;
+      height: 16px;
+      background: #111;
+      border-radius: 3px;
+      margin-top: 8px;
+      border: 2px solid #555;
+      position: relative;
+      box-shadow: inset 0 2px 5px rgba(0,0,0,0.8);
+      z-index: 4;
+    }
+
+    .famicom-slot-lid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #222;
+      border-radius: 1px;
+      transform-origin: top;
+      transition: transform 0.4s ease, opacity 0.3s ease;
+    }
+
+    .famicom-slot-wrapper.has-cart .famicom-slot-lid {
+      transform: rotateX(-90deg);
+      opacity: 0;
+    }
+
+    .famicom-cartridge {
+      width: 96px;
+      height: 52px;
+      background: #f1c40f;
+      border-radius: 4px 4px 1px 1px;
+      border: 2px solid #d4ac0d;
+      position: absolute;
+      bottom: 6px;
+      left: calc(50% - 48px);
+      box-shadow: 
+        0 4px 8px rgba(0,0,0,0.5),
+        inset 0 1px 2px rgba(255,255,255,0.4);
+      z-index: 10;
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.2), opacity 0.3s ease;
+      transform: translateY(40px);
+      opacity: 0;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 4px;
+      box-sizing: border-box;
+    }
+
+    .famicom-cartridge.inserted {
+      transform: translateY(12px);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .famicom-cartridge.ejected {
+      transform: translateY(-24px);
+      opacity: 1;
+      box-shadow: 0 10px 15px rgba(0,0,0,0.6);
+    }
+
+    .famicom-cart-label {
+      width: 82px;
+      height: 34px;
+      background: linear-gradient(180deg, #ff7675 0%, #d63031 100%);
+      border: 1px solid rgba(0,0,0,0.25);
+      border-radius: 2px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 3px;
+      box-sizing: border-box;
+      color: white;
+      font-family: 'Outfit', sans-serif;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.5);
+    }
+
+    .famicom-cart-label-title {
+      font-size: 0.45rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      text-align: center;
+      width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .famicom-cart-label-brand {
+      font-size: 0.3rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      color: rgba(255,255,255,0.8);
+      text-transform: uppercase;
+      border-top: 1px solid rgba(255,255,255,0.3);
+      width: 100%;
+      text-align: center;
+      padding-top: 1px;
+    }
+
+    .famicom-eject-lever-wrapper {
+      position: absolute;
+      bottom: 22px;
+      left: calc(50% - 12px);
+      width: 24px;
+      height: 12px;
+      background: #888;
+      border-radius: 2px;
+      border: 1px solid #666;
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 5;
+    }
+
+    .famicom-eject-lever {
+      width: 18px;
+      height: 6px;
+      background: #aaa;
+      border-radius: 1px;
+      border: 1px solid #777;
+      box-shadow: 0 1px 1px rgba(0,0,0,0.5);
+      transition: transform 0.15s ease;
+    }
+
+    .famicom-eject-lever-wrapper.pushed .famicom-eject-lever {
+      transform: translateY(3px);
+    }
+
+    .famicom-power-switch-container {
+      position: absolute;
+      left: 48px;
+      bottom: 8px;
+      width: 14px;
+      height: 24px;
+      background: #111;
+      border-radius: 2px;
+      border: 1px solid #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 1px 0;
+      box-sizing: border-box;
+      z-index: 5;
+    }
+
+    .famicom-power-switch {
+      width: 10px;
+      height: 8px;
+      background: #3498db;
+      border-radius: 1px;
+      border: 1px solid #2980b9;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.5);
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      transform: translateY(12px);
+    }
+
+    .famicom-power-switch.on {
+      transform: translateY(0);
+    }
+
+    .famicom-reset-button-container {
+      position: absolute;
+      right: 48px;
+      bottom: 8px;
+      width: 14px;
+      height: 24px;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      z-index: 5;
+    }
+
+    .famicom-reset-button {
+      width: 12px;
+      height: 12px;
+      background: #3498db;
+      border-radius: 50%;
+      border: 1px solid #2980b9;
+      box-shadow: 0 2px 0 #217dbb, 0 1px 3px rgba(0,0,0,0.5);
+      cursor: pointer;
+      transition: all 0.1s ease;
+    }
+
+    .famicom-led {
+      position: absolute;
+      left: 68px;
+      bottom: 14px;
+      width: 4px;
+      height: 4px;
+      background: #222;
+      border-radius: 50%;
+      transition: background 0.3s ease, box-shadow 0.3s ease;
+      z-index: 5;
+    }
+
+    .famicom-led.on {
+      background: #ef4444;
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.8);
+    }
+
+    /* CRT GLASS AND REFLECTION EFFECTS */
+    .crt-reflection {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 30%, transparent 60%, rgba(0,0,0,0.15) 100%);
+      pointer-events: none;
+      z-index: 11;
+      mix-blend-mode: overlay;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .crt-bezel-shadow {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      box-shadow: 
+        inset 0 14px 16px rgba(0,0,0,0.85),
+        inset 14px 0 16px rgba(0,0,0,0.85),
+        inset -14px 0 16px rgba(0,0,0,0.85),
+        inset 0 -14px 16px rgba(0,0,0,0.85);
+      pointer-events: none;
+      z-index: 12;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .tv-cabinet.crt-active .crt-reflection {
+      opacity: 1;
+    }
+
+    .tv-cabinet.crt-active .crt-bezel-shadow {
+      opacity: 1;
+    }
+
+    /* PORTA-FITAS (GAME RACK) */
+    .famicom-rack {
+      display: flex;
+      gap: 5px;
+      padding: 4px;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1.5px solid #0f0a07;
+      border-radius: 4px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+      position: absolute;
+      right: 32px;
+      bottom: 12px;
+      height: 34px;
+      align-items: flex-end;
+      z-index: 5;
+      box-sizing: border-box;
+    }
+
+    .rack-cart {
+      width: 13px;
+      height: 25px;
+      background: #f1c40f;
+      border-radius: 2px 2px 0 0;
+      border: 1px solid #d4ac0d;
+      cursor: pointer;
+      position: relative;
+      transition: transform 0.2s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+    }
+
+    .rack-cart:hover {
+      transform: translateY(-6px);
+    }
+
+    .rack-cart::after {
+      content: '';
+      position: absolute;
+      left: 1.5px;
+      right: 1.5px;
+      top: 1.5px;
+      bottom: 1.5px;
+      background: #e74c3c;
+      border-radius: 0.5px;
+    }
+
+    .rack-cart-label {
+      position: absolute;
+      left: -8px;
+      top: 7px;
+      width: 28px;
+      height: 10px;
+      font-size: 0.24rem;
+      font-weight: 800;
+      color: white;
+      text-transform: uppercase;
+      font-family: 'Outfit', sans-serif;
+      transform: rotate(-90deg);
+      white-space: nowrap;
+      text-shadow: 0 1px 1px rgba(0,0,0,0.6);
+      pointer-events: none;
+      z-index: 10;
+      letter-spacing: 0.2px;
+    }
+
+    .rack-cart.cart-ego { background: #3498db; border-color: #2980b9; }
+    .rack-cart.cart-ego::after { background: #e74c3c; }
+
+    .rack-cart.cart-sec { background: #e74c3c; border-color: #c0392b; }
+    .rack-cart.cart-sec::after { background: #f1c40f; }
+
+    .rack-cart.cart-mower { background: #2ecc71; border-color: #27ae60; }
+    .rack-cart.cart-mower::after { background: #3498db; }
+
+    /* SAVE STATE FLOPPY DISKS */
+    .famicom-disks {
+      display: flex;
+      gap: 10px;
+      position: absolute;
+      left: 32px;
+      bottom: 12px;
+      height: 34px;
+      align-items: flex-end;
+      z-index: 5;
+    }
+
+    .floppy-disk {
+      width: 28px;
+      height: 28px;
+      background: #2c3e50;
+      border-radius: 2px;
+      border: 1.5px solid #1a252f;
+      position: relative;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+      align-items: center;
+      padding: 2px;
+      box-sizing: border-box;
+    }
+
+    .floppy-disk:hover {
+      transform: translateY(-5px);
+    }
+
+    .floppy-disk.disk-red {
+      background: #c0392b;
+      border-color: #962d22;
+    }
+
+    .floppy-label {
+      width: 20px;
+      height: 12px;
+      background: #fff;
+      border-radius: 0.5px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.5px;
+      box-sizing: border-box;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .floppy-label-title {
+      font-size: 0.24rem;
+      font-weight: 800;
+      color: #95a5a6;
+      line-height: 1;
+    }
+
+    .floppy-label-game {
+      font-size: 0.22rem;
+      font-family: monospace;
+      color: #27ae60;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+      text-align: center;
+      line-height: 1;
+    }
+
+    .floppy-slider {
+      width: 8px;
+      height: 6px;
+      background: #bdc3c7;
+      border-radius: 0.5px;
+      margin-top: 1px;
+      align-self: flex-start;
+      margin-left: 1px;
+      box-shadow: inset 0 0.5px 0.5px rgba(255,255,255,0.5);
+    }
+
+    .floppy-actions {
+      position: absolute;
+      bottom: 30px;
+      left: calc(50% - 25px);
+      width: 50px;
+      background: rgba(10, 8, 8, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 4px;
+      display: flex;
+      flex-direction: column;
+      padding: 3px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.5);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(6px);
+      transition: all 0.2s ease;
+      z-index: 20;
+    }
+
+    .floppy-disk:hover .floppy-actions {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+
+    .floppy-action-btn {
+      font-size: 0.38rem;
+      font-weight: 800;
+      color: white;
+      text-transform: uppercase;
+      padding: 2px 0;
+      text-align: center;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background 0.15s ease;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .floppy-action-btn.act-save:hover {
+      background: #27ae60;
+    }
+
+    .floppy-action-btn.act-load:hover {
+      background: #facc15;
+      color: black;
+    }
+
+    /* MONITOR DE CPU */
+    .cpu-monitor-card {
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: all 0.3s ease;
+    }
+
+    .cpu-monitor-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 8px;
+    }
+
+    .cpu-monitor-title {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #34d399;
+    }
+
+    .cpu-monitor-toggle-btn {
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(52, 211, 153, 0.1);
+      border: 1px solid rgba(52, 211, 153, 0.3);
+      color: #34d399;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .cpu-monitor-toggle-btn.active {
+      background: #34d399;
+      color: #0f172a;
+      box-shadow: 0 0 8px rgba(52, 211, 153, 0.4);
+    }
+
+    .cpu-monitor-body {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      opacity: 0.4;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .cpu-monitor-card.active .cpu-monitor-body {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .cpu-reg-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .cpu-reg-item {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: #a7f3d0;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .cpu-reg-item span:first-child {
+      color: #34d399;
+      font-weight: 700;
+    }
+
+    .cpu-flags-row {
+      display: flex;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      padding: 6px 12px;
+    }
+
+    .cpu-flag {
+      font-size: 0.7rem;
+      font-family: monospace;
+      font-weight: 700;
+      color: rgba(255, 255, 255, 0.15);
+      transition: all 0.2s ease;
+    }
+
+    .cpu-flag.active {
+      color: #34d399;
+      text-shadow: 0 0 5px rgba(52, 211, 153, 0.8);
+    }
+
+    .cpu-disasm {
+      background: rgba(0, 0, 0, 0.5);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 8px;
+      height: 48px;
+      font-family: monospace;
+      font-size: 0.7rem;
+      color: #a7f3d0;
+      overflow-y: hidden;
+      white-space: pre-wrap;
+      line-height: 1.4;
     }
   </style>
 </head>
 <body>
   <div class="app">
-    <h1>🎮 NES Emulator — JS Puro v14</h1>
-    <p>
-      Emulador próprio, sem EmulatorJS e sem core externo.
-      Suporta leitura de ROM <code>.nes</code> iNES, Mapper 0/NROM e Mapper 4/MMC3 experimental. CPU 6502, PPU v14 inteligente por ROM, base v8 para MMC3 e correções específicas para Mario.
-      Esta versão usa a base gráfica estável da v8 e aplica correções inteligentes por perfil de ROM.
-    </p>
+    <header>
+      <div class="title-wrapper">
+        <h1>🎮 NES Emulator <span class="version-badge">JS Puro v15</span></h1>
+      </div>
+      <p class="subtitle">
+        Emulador NES puro escrito em Javascript, estendido com ampla compatibilidade para jogos comerciais através de múltiplos mappers avançados e tratamento de opcodes não-oficiais.
+      </p>
+      <div class="mappers-list">
+        <span class="mapper-badge active">✓ NROM (M0)</span>
+        <span class="mapper-badge active">✓ MMC1 (M1)</span>
+        <span class="mapper-badge active">✓ UxROM (M2)</span>
+        <span class="mapper-badge active">✓ CNROM (M3)</span>
+        <span class="mapper-badge active">✓ MMC3 (M4)</span>
+        <span class="mapper-badge active">✓ AxROM (M7)</span>
+      </div>
+    </header>
 
-    <div class="controls">
-      <input type="file" id="romInput" accept=".nes" />
-      <button id="btnRun">▶️ Rodar</button>
-      <button id="btnReset">🔄 Reset</button>
-      <button id="btnPause">⏸️ Pausar</button>
+    <div class="main-layout">
+      <div class="screen-wrapper">
+        <div class="tv-cabinet crt-active" id="tvCabinet">
+          <div class="screen" id="screenContainer">
+            <canvas id="screen" width="256" height="240"></canvas>
+            <div class="crt-glow"></div>
+            <div class="crt-reflection"></div>
+            <div class="crt-bezel-shadow"></div>
+            <div class="screen-off-overlay"></div>
+          </div>
+          <div class="tv-side-panel">
+            <!-- V.MODE DIAL -->
+            <div class="tv-dial-wrapper">
+              <span class="tv-dial-label">V.MODE</span>
+              <div class="tv-dial-container">
+                <div class="tv-dial-ticks crt-ticks">
+                  <span class="tick" style="transform: rotate(-45deg) translateY(-21px);" title="Digital Limpo"></span>
+                  <span class="tick active" style="transform: rotate(45deg) translateY(-21px);" title="Modo CRT"></span>
+                </div>
+                <div class="tv-dial" id="btnToggleCRT" title="Alternar Modo CRT Retro vs Digital Limpo"></div>
+              </div>
+            </div>
+
+            <!-- SIZE DIAL -->
+            <div class="tv-dial-wrapper">
+              <span class="tv-dial-label">SIZE</span>
+              <div class="tv-dial-container">
+                <div class="tv-dial-ticks size-ticks">
+                  <span class="tick active" style="transform: rotate(-60deg) translateY(-21px);" title="Médio"></span>
+                  <span class="tick" style="transform: rotate(0deg) translateY(-21px);" title="Grande"></span>
+                  <span class="tick" style="transform: rotate(60deg) translateY(-21px);" title="Gigante"></span>
+                </div>
+                <div class="tv-dial" id="btnToggleSize" title="Alternar Tamanho da TV (Médio vs Grande vs Gigante)"></div>
+              </div>
+            </div>
+
+            <!-- VOLUME DIAL -->
+            <div class="tv-dial-wrapper">
+              <span class="tv-dial-label">VOLUME</span>
+              <div class="tv-dial-container">
+                <div class="tv-dial-ticks vol-ticks">
+                  <span class="tick" style="transform: rotate(-135deg) translateY(-21px);" title="Mudo"></span>
+                  <span class="tick" style="transform: rotate(-45deg) translateY(-21px);" title="Baixo"></span>
+                  <span class="tick" style="transform: rotate(45deg) translateY(-21px);" title="Médio"></span>
+                  <span class="tick active" style="transform: rotate(135deg) translateY(-21px);" title="Alto"></span>
+                </div>
+                <div class="tv-dial" id="btnToggleVol" title="Ajustar Volume (Mudo ➔ Baixo ➔ Médio ➔ Alto)"></div>
+              </div>
+            </div>
+
+            <!-- POWER BUTTON -->
+            <div class="tv-dial-wrapper">
+              <span class="tv-dial-label" style="color: #f87171;">POWER</span>
+              <button class="tv-power-btn pushed" id="btnPower" title="Ligar/Desligar a TV"></button>
+            </div>
+
+            <!-- SPEAKER GRILLE & LED -->
+            <div class="tv-speaker-grille"></div>
+            <div class="tv-power-led"></div>
+          </div>
+        </div>
+
+        <!-- FAMICOM CONTAINER -->
+        <div class="famicom-container">
+          <!-- Disquetes de Save State (Esquerda) -->
+          <div class="famicom-disks">
+            <!-- Slot 1 -->
+            <div class="floppy-disk disk-blue" id="floppySlot1" title="Slot de Save 1">
+              <div class="floppy-label">
+                <span class="floppy-label-title">SLOT 1</span>
+                <span class="floppy-label-game" id="floppyGame1">VAZIO</span>
+              </div>
+              <div class="floppy-slider"></div>
+              <div class="floppy-actions">
+                <div class="floppy-action-btn act-save" onclick="saveGameSlot(1)">SAVE</div>
+                <div class="floppy-action-btn act-load" onclick="loadGameSlot(1)">LOAD</div>
+              </div>
+            </div>
+            <!-- Slot 2 -->
+            <div class="floppy-disk disk-red" id="floppySlot2" title="Slot de Save 2">
+              <div class="floppy-label">
+                <span class="floppy-label-title">SLOT 2</span>
+                <span class="floppy-label-game" id="floppyGame2">VAZIO</span>
+              </div>
+              <div class="floppy-slider"></div>
+              <div class="floppy-actions">
+                <div class="floppy-action-btn act-save" onclick="saveGameSlot(2)">SAVE</div>
+                <div class="floppy-action-btn act-load" onclick="loadGameSlot(2)">LOAD</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="famicom-console" id="famicomConsole">
+            <!-- Gold Label -->
+            <div class="famicom-gold-plate">
+              <span class="famicom-gold-plate-text">Family Computer</span>
+            </div>
+
+            <!-- Cartridge Slot -->
+            <div class="famicom-slot-wrapper" id="famicomSlot">
+              <div class="famicom-slot-lid"></div>
+              
+              <!-- Cartridge (Fita) -->
+              <div class="famicom-cartridge" id="famicomCartridge">
+                <div class="famicom-cart-label" id="famicomCartLabel">
+                  <span class="famicom-cart-label-title" id="famicomCartTitle">NENHUM JOGO</span>
+                  <span class="famicom-cart-label-brand">Nintendo</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Eject Lever -->
+            <div class="famicom-eject-lever-wrapper" id="famicomEject">
+              <div class="famicom-eject-lever"></div>
+            </div>
+
+            <!-- Power Switch -->
+            <div class="famicom-power-switch-container">
+              <div class="famicom-power-switch" id="famicomPower"></div>
+            </div>
+
+            <!-- Reset Button -->
+            <div class="famicom-reset-button-container">
+              <div class="famicom-reset-button" id="famicomReset"></div>
+            </div>
+
+            <!-- LED -->
+            <div class="famicom-led" id="famicomLed"></div>
+          </div>
+
+          <!-- Porta-Fitas de Jogos Integrados (Direita) -->
+          <div class="famicom-rack" id="famicomRack">
+            <div class="rack-cart cart-ego" onclick="loadHomebrew('Alter_Ego', 'https://raw.githubusercontent.com/OpenEmu/OpenEmu-Update/master/Homebrew/NES/Alter%20Ego/Alter_Ego.nes')" title="Jogar Alter Ego (Homebrew)">
+              <span class="rack-cart-label">ALTER EGO</span>
+            </div>
+            <div class="rack-cart cart-sec" onclick="loadHomebrew('Zooming_Sec', 'https://raw.githubusercontent.com/OpenEmu/OpenEmu-Update/master/Homebrew/NES/Zooming%20Secretary/Zooming_Secretary.nes')" title="Jogar Zooming Secretary (Homebrew)">
+              <span class="rack-cart-label">ZOOMING SEC</span>
+            </div>
+            <div class="rack-cart cart-mower" onclick="loadHomebrew('Lawn_Mower', 'https://raw.githubusercontent.com/OpenEmu/OpenEmu-Update/master/Homebrew/NES/Lawn%20Mower/Lawn_Mower.nes')" title="Jogar Lawn Mower (Homebrew)">
+              <span class="rack-cart-label">LAWN MOWER</span>
+            </div>
+          </div>
+          
+          <!-- Shelf -->
+          <div class="tv-shelf"></div>
+        </div>
+      </div>
+
+      <div class="control-panel">
+        <div class="file-upload-area">
+          <span class="upload-icon">📁</span>
+          <div class="upload-text">Selecione uma ROM (.nes, .zip, .7z)</div>
+          <div class="upload-subtext">Limite recomendado: até 512KB</div>
+          <input type="file" id="romInput" accept=".nes,.zip,.7z" />
+        </div>
+
+        <div class="action-buttons">
+          <button id="btnRun">▶ Rodar</button>
+          <button id="btnReset">🔄 Reset</button>
+          <button id="btnPause">⏸ Pausar</button>
+        </div>
+
+        <div class="status-card">
+          <div class="status-title">Painel de Status</div>
+          <div class="status-text" id="status">Aguardando arquivo ROM .nes...</div>
+        </div>
+
+        <!-- MONITOR DE CPU -->
+        <div class="cpu-monitor-card" id="cpuMonitorCard">
+          <div class="cpu-monitor-header">
+            <span class="cpu-monitor-title">📟 Monitor do Processador (CPU 6502)</span>
+            <button class="cpu-monitor-toggle-btn" id="btnToggleCpuMonitor" title="Ativar/Desativar Monitoramento Real-time">Ligar</button>
+          </div>
+          <div class="cpu-monitor-body" id="cpuMonitorBody">
+            <div class="cpu-reg-row">
+              <div class="cpu-reg-item"><span>A:</span> <span id="regA" class="cpu-hex-val">00</span></div>
+              <div class="cpu-reg-item"><span>X:</span> <span id="regX" class="cpu-hex-val">00</span></div>
+              <div class="cpu-reg-item"><span>Y:</span> <span id="regY" class="cpu-hex-val">00</span></div>
+              <div class="cpu-reg-item"><span>SP:</span> <span id="regSP" class="cpu-hex-val">FD</span></div>
+            </div>
+            <div class="cpu-reg-row">
+              <div class="cpu-reg-item" style="flex: 2;"><span>PC:</span> <span id="regPC" class="cpu-hex-val">0000</span></div>
+              <div class="cpu-reg-item" style="flex: 2;"><span>Ciclos:</span> <span id="regCycles" class="cpu-dec-val">0</span></div>
+            </div>
+            <div class="cpu-flags-row">
+              <span class="cpu-flag" id="flagN">N</span>
+              <span class="cpu-flag" id="flagV">V</span>
+              <span class="cpu-flag" id="flagU">U</span>
+              <span class="cpu-flag" id="flagB">B</span>
+              <span class="cpu-flag" id="flagD">D</span>
+              <span class="cpu-flag" id="flagI">I</span>
+              <span class="cpu-flag" id="flagZ">Z</span>
+              <span class="cpu-flag" id="flagC">C</span>
+            </div>
+            <div class="cpu-disasm" id="cpuDisasm">Monitor desligado.</div>
+          </div>
+        </div>
+
+        <div class="info-card">
+          <div class="info-title">🎮 Controles Disponíveis</div>
+          <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--primary);">Teclado</div>
+          <div class="controls-grid" style="margin-bottom: 12px;">
+            <div class="control-item"><span>D-Pad</span><span>Setas</span></div>
+            <div class="control-item"><span>Botão A</span><span>Z</span></div>
+            <div class="control-item"><span>Botão B</span><span>X</span></div>
+            <div class="control-item"><span>Start</span><span>Enter</span></div>
+            <div class="control-item"><span>Select</span><span>Shift</span></div>
+          </div>
+          <div style="font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--success);">Controle USB / Bluetooth</div>
+          <div class="controls-grid">
+            <div class="control-item"><span>D-Pad / Analógico</span><span>D-Pad / Esq</span></div>
+            <div class="control-item"><span>Botão A</span><span>A / Y (Xbox)</span></div>
+            <div class="control-item"><span>Botão B</span><span>B / X (Xbox)</span></div>
+            <div class="control-item"><span>Start</span><span>Start</span></div>
+            <div class="control-item"><span>Select</span><span>Select</span></div>
+          </div>
+        </div>
+      </div>
     </div>
-
-    <div class="screen">
-      <canvas id="screen" width="256" height="240"></canvas>
-    </div>
-
-    <div class="status" id="status">
-      Status: aguardando ROM .nes
-    </div>
-
-    <p class="status">
-      Controles: Setas = D-Pad | Z = A | X = B | Enter = Start | Shift = Select
-    </p>
   </div>
 
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sevenzip-wasm/sevenzip-wasm.min.js"></script>
   <script src="nes.js"></script>
+  <script>
+    // Configura botões, estados e feedback visual da TV
+    let tvOn = true;
+    const btnRun = document.getElementById("btnRun");
+    const tvCabinet = document.getElementById("tvCabinet");
+    
+    function updateLedColor() {
+      const led = document.querySelector(".tv-power-led");
+      if (!tvOn) {
+        led.style.background = "#1e293b";
+        led.style.boxShadow = "none";
+      } else if (tvCabinet.classList.contains("running")) {
+        led.style.background = "#10b981";
+        led.style.boxShadow = "0 0 10px rgba(16, 185, 129, 0.8), 0 0 20px rgba(16, 185, 129, 0.5)";
+      } else {
+        led.style.background = "#ef4444";
+        led.style.boxShadow = "0 0 6px rgba(239, 68, 68, 0.8)";
+      }
+    }
+
+    btnRun.addEventListener("click", () => {
+      tvCabinet.classList.add("running");
+      updateLedColor();
+    });
+
+    const btnToggleCRT = document.getElementById("btnToggleCRT");
+    let crtActive = true;
+    const crtAngles = [-45, 45];
+    // Sincroniza rotação inicial do botão V.MODE
+    btnToggleCRT.style.transform = `rotate(${crtAngles[crtActive ? 1 : 0]}deg)`;
+
+    btnToggleCRT.addEventListener("click", () => {
+      if (!tvOn) return; // ignora se a TV estiver desligada
+      crtActive = !crtActive;
+      tvCabinet.classList.toggle("crt-active", crtActive);
+      btnToggleCRT.style.transform = `rotate(${crtAngles[crtActive ? 1 : 0]}deg)`;
+
+      // Atualiza ticks ativos
+      document.querySelectorAll('.crt-ticks .tick').forEach((tick, idx) => {
+        tick.classList.toggle('active', idx === (crtActive ? 1 : 0));
+      });
+    });
+
+    const btnToggleSize = document.getElementById("btnToggleSize");
+    const appContainer = document.querySelector(".app");
+    let sizeIndex = 0; // 0: Normal, 1: Large, 2: Giant
+    const sizeAngles = [-60, 0, 60];
+    // Sincroniza rotação inicial do botão SIZE
+    btnToggleSize.style.transform = `rotate(${sizeAngles[sizeIndex]}deg)`;
+    
+    btnToggleSize.addEventListener("click", () => {
+      if (!tvOn) return; // ignora se a TV estiver desligada
+      sizeIndex = (sizeIndex + 1) % 3;
+      btnToggleSize.style.transform = `rotate(${sizeAngles[sizeIndex]}deg)`;
+
+      tvCabinet.classList.remove("tv-large", "tv-giant");
+      appContainer.classList.remove("layout-large", "layout-giant");
+
+      if (sizeIndex === 1) {
+        tvCabinet.classList.add("tv-large");
+        appContainer.classList.add("layout-large");
+      } else if (sizeIndex === 2) {
+        tvCabinet.classList.add("tv-giant");
+        appContainer.classList.add("layout-giant");
+      }
+
+      // Atualiza ticks ativos
+      document.querySelectorAll('.size-ticks .tick').forEach((tick, idx) => {
+        tick.classList.toggle('active', idx === sizeIndex);
+      });
+    });
+
+    // Controle de Volume via Dial
+    const btnToggleVol = document.getElementById("btnToggleVol");
+    let volIndex = 3; // 0: Mudo, 1: Baixo (0.08), 2: Médio (0.18), 3: Alto (0.30)
+    const volAngles = [-135, -45, 45, 135];
+    // Sincroniza rotação inicial do botão VOLUME
+    btnToggleVol.style.transform = `rotate(${volAngles[volIndex]}deg)`;
+
+    btnToggleVol.addEventListener("click", () => {
+      if (!tvOn) return; // ignora se a TV estiver desligada
+      volIndex = (volIndex + 1) % 4;
+      btnToggleVol.style.transform = `rotate(${volAngles[volIndex]}deg)`;
+
+      let volVal = 0.30; // Alto
+      if (volIndex === 0) volVal = 0;
+      else if (volIndex === 1) volVal = 0.08;
+      else if (volIndex === 2) volVal = 0.18;
+
+      nes.apu.setVolume(volVal);
+
+      // Sincroniza volume da estática
+      if (staticGainNode) {
+        const levelsStatic = [0, 0.03, 0.07, 0.12];
+        staticGainNode.gain.value = levelsStatic[volIndex];
+      }
+
+      // Atualiza ticks ativos
+      document.querySelectorAll('.vol-ticks .tick').forEach((tick, idx) => {
+        tick.classList.toggle('active', idx === volIndex);
+      });
+
+      const statusText = document.getElementById("status");
+      const levels = ["MUDO", "BAIXO", "MÉDIO", "ALTO"];
+      statusText.textContent = nes.statusBase + ` | Volume TV: ${levels[volIndex]}`;
+    });
+
+    // Botão Liga/Desliga a TV
+    const btnPower = document.getElementById("btnPower");
+    btnPower.addEventListener("click", () => {
+      tvOn = !tvOn;
+      btnPower.classList.toggle("pushed");
+      tvCabinet.classList.toggle("tv-off");
+
+      if (!tvOn) {
+        // Desligou a TV: pausa o emulador
+        if (nes.running && !nes.paused) {
+          nes.pause();
+        }
+        document.getElementById("famicomPower").classList.remove("on");
+        document.getElementById("famicomLed").classList.remove("on");
+        stopStaticAudio();
+      } else {
+        // Ligou a TV: resume o emulador
+        if (nes.running && nes.paused) {
+          nes.pause();
+        }
+        if (document.getElementById("famicomSlot").classList.contains("has-cart") && nes.running && !nes.paused) {
+          document.getElementById("famicomPower").classList.add("on");
+          document.getElementById("famicomLed").classList.add("on");
+        } else if (!document.getElementById("famicomSlot").classList.contains("has-cart")) {
+          // Se não tem cartucho, inicia o chuvisco!
+          startTvStatic();
+        }
+      }
+      updateLedColor();
+    });
+
+    // Inicializa a cor do LED de energia
+    updateLedColor();
+
+    // Lógica do Console Famicom Virtual
+    const romInput = document.getElementById("romInput");
+    const famicomCartridge = document.getElementById("famicomCartridge");
+    const famicomCartTitle = document.getElementById("famicomCartTitle");
+    const famicomSlot = document.getElementById("famicomSlot");
+    const famicomPower = document.getElementById("famicomPower");
+    const famicomLed = document.getElementById("famicomLed");
+    const famicomReset = document.getElementById("famicomReset");
+    const famicomEject = document.getElementById("famicomEject");
+
+    // Quando o usuário seleciona uma ROM
+    romInput.addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      // Para o chuvisco de áudio
+      stopStaticAudio();
+
+      const statusEl = document.getElementById("status");
+      statusEl.textContent = "Lendo arquivo: " + file.name + "...";
+
+      try {
+        let bytes;
+        let displayName = file.name;
+
+        if (file.name.toLowerCase().endsWith(".zip")) {
+          if (typeof JSZip === "undefined") {
+            throw new Error("Biblioteca de descompactação ZIP (JSZip) não carregada.");
+          }
+          statusEl.textContent = "Descompactando ZIP...";
+          const zip = await JSZip.loadAsync(file);
+          const nesFile = Object.values(zip.files).find(f => f.name.toLowerCase().endsWith(".nes"));
+          if (!nesFile) {
+            throw new Error("Nenhum arquivo .nes encontrado dentro do ZIP.");
+          }
+          displayName = nesFile.name;
+          bytes = await nesFile.async("uint8array");
+        } else if (file.name.toLowerCase().endsWith(".7z")) {
+          if (typeof SevenZipWasm === "undefined") {
+            throw new Error("Biblioteca de descompactação 7z (SevenZipWasm) não carregada.");
+          }
+          statusEl.textContent = "Descompactando 7z (WebAssembly)...";
+          const sevenZip = await SevenZipWasm();
+          const arrayBuffer = await file.arrayBuffer();
+          
+          // Escreve no sistema de arquivos virtual
+          sevenZip.FS.writeFile("archive.7z", new Uint8Array(arrayBuffer));
+          
+          // Extrai o arquivo
+          sevenZip.callMain(["x", "archive.7z"]);
+          
+          // Busca o arquivo .nes na pasta raiz "/"
+          const files = sevenZip.FS.readdir("/");
+          const nesFileName = files.find(f => f.toLowerCase().endsWith(".nes"));
+          if (!nesFileName) {
+            try { sevenZip.FS.unlink("archive.7z"); } catch(e) {}
+            throw new Error("Nenhum arquivo .nes encontrado dentro do 7z.");
+          }
+          
+          displayName = nesFileName;
+          bytes = sevenZip.FS.readFile(nesFileName);
+          
+          // Limpa o sistema de arquivos virtual
+          try { sevenZip.FS.unlink("archive.7z"); } catch(e) {}
+          files.forEach(f => {
+            if (f !== "." && f !== "..") {
+              try { sevenZip.FS.unlink(f); } catch(e) {}
+            }
+          });
+        } else {
+          bytes = new Uint8Array(await file.arrayBuffer());
+        }
+
+        // Carrega ROM no emulador
+        nes.load(bytes);
+
+        // Prepara visual do cartucho Famicom
+        let gameName = displayName.replace(/\.[^/.]+$/, ""); // remove extensão (.nes)
+        gameName = gameName.replace(/[._-]/g, " ").toUpperCase().trim();
+        famicomCartTitle.textContent = gameName;
+
+        // Paletas de cores para as fitas baseadas no hashing do nome
+        const cartColors = [
+          { body: '#f1c40f', border: '#d4ac0d', label: 'linear-gradient(180deg, #e74c3c 0%, #c0392b 100%)' }, // Amarelo
+          { body: '#e74c3c', border: '#c0392b', label: 'linear-gradient(180deg, #3498db 0%, #2980b9 100%)' }, // Vermelho
+          { body: '#3498db', border: '#2980b9', label: 'linear-gradient(180deg, #2ecc71 0%, #27ae60 100%)' }, // Azul
+          { body: '#2ecc71', border: '#27ae60', label: 'linear-gradient(180deg, #f1c40f 0%, #f39c12 100%)' }, // Verde
+          { body: '#9b59b6', border: '#8e44ad', label: 'linear-gradient(180deg, #34495e 0%, #2c3e50 100%)' }, // Roxo
+          { body: '#e67e22', border: '#d35400', label: 'linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%)' }  // Laranja
+        ];
+
+        const hash = gameName.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+        const theme = cartColors[Math.abs(hash) % cartColors.length];
+
+        famicomCartridge.style.backgroundColor = theme.body;
+        famicomCartridge.style.borderColor = theme.border;
+        document.getElementById("famicomCartLabel").style.background = theme.label;
+
+        // Inserção animada
+        famicomCartridge.className = "famicom-cartridge ejected";
+        famicomSlot.classList.remove("has-cart");
+
+        setTimeout(() => {
+          famicomCartridge.className = "famicom-cartridge inserted";
+          famicomSlot.classList.add("has-cart");
+        }, 400);
+
+        // Se a TV estiver ligada e carregou com sucesso, liga o Famicom
+        if (tvOn) {
+          setTimeout(() => {
+            nes.start();
+            tvCabinet.classList.add("running");
+            updateLedColor();
+            famicomPower.classList.add("on");
+            famicomLed.classList.add("on");
+          }, 800);
+        }
+
+      } catch (err) {
+        statusEl.textContent = "Erro: " + err.message;
+        console.error(err);
+      }
+    });
+
+    // Quando clica em "Rodar" no emulador, liga o Famicom
+    btnRun.addEventListener("click", () => {
+      if (tvOn && famicomSlot.classList.contains("has-cart")) {
+        famicomPower.classList.add("on");
+        famicomLed.classList.add("on");
+      }
+    });
+
+    // Reset físico do Famicom
+    famicomReset.addEventListener("click", () => {
+      if (!tvOn || !famicomSlot.classList.contains("has-cart")) return;
+      nes.reset();
+      famicomReset.style.transform = "translateY(2px)";
+      famicomReset.style.boxShadow = "none";
+      setTimeout(() => {
+        famicomReset.style.transform = "none";
+        famicomReset.style.boxShadow = "0 2px 0 #217dbb, 0 1px 3px rgba(0,0,0,0.5)";
+      }, 150);
+    });
+
+    // Alavanca de Ejetar do Famicom
+    famicomEject.addEventListener("click", () => {
+      if (!famicomSlot.classList.contains("has-cart")) return;
+
+      // Efeito de empurrar a alavanca
+      famicomEject.classList.add("pushed");
+      setTimeout(() => famicomEject.classList.remove("pushed"), 300);
+
+      // Desliga console
+      famicomPower.classList.remove("on");
+      famicomLed.classList.remove("on");
+
+      // Anima cartucho saindo
+      famicomCartridge.className = "famicom-cartridge ejected";
+      famicomSlot.classList.remove("has-cart");
+
+      // Para o emulador e atualiza UI da TV
+      nes.running = false;
+      nes.paused = false;
+      if (nes.apu) nes.apu.setMuted(true);
+
+      tvCabinet.classList.remove("running");
+      updateLedColor();
+
+      // Agora inicia o chuvisco animado se a TV estiver ligada!
+      if (tvOn) {
+        startTvStatic();
+      } else {
+        const ctx = document.getElementById("screen").getContext("2d");
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, 256, 240);
+      }
+
+      document.getElementById("romInput").value = "";
+      document.getElementById("status").textContent = "Fita ejetada. Insira uma nova ROM .nes";
+
+      // Esconde o cartucho após 1s
+      setTimeout(() => {
+        if (!famicomSlot.classList.contains("has-cart")) {
+          famicomCartridge.className = "famicom-cartridge";
+        }
+      }, 1000);
+    });
+
+    // Lógica de Carregamento de ROMs Homebrew Integradas
+    async function loadHomebrew(gameName, url) {
+      if (!tvOn) return;
+      stopStaticAudio();
+
+      const statusText = document.getElementById("status");
+      statusText.textContent = "Carregando fita: " + gameName.replace(/_/g, " ") + "...";
+
+      const niceName = gameName.replace(/[._-]/g, " ").toUpperCase().trim();
+      famicomCartTitle.textContent = niceName;
+
+      const themes = {
+        'Alter_Ego': { body: '#3498db', border: '#2980b9', label: 'linear-gradient(180deg, #e74c3c 0%, #c0392b 100%)' },
+        'Zooming_Sec': { body: '#e74c3c', border: '#c0392b', label: 'linear-gradient(180deg, #f1c40f 0%, #f39c12 100%)' },
+        'Lawn_Mower': { body: '#2ecc71', border: '#27ae60', label: 'linear-gradient(180deg, #3498db 0%, #2980b9 100%)' }
+      };
+
+      const theme = themes[gameName] || { body: '#f1c40f', border: '#d4ac0d', label: 'linear-gradient(180deg, #ff7675 0%, #d63031 100%)' };
+      famicomCartridge.style.backgroundColor = theme.body;
+      famicomCartridge.style.borderColor = theme.border;
+      document.getElementById("famicomCartLabel").style.background = theme.label;
+
+      // Animação de inserção física
+      famicomCartridge.className = "famicom-cartridge ejected";
+      famicomSlot.classList.remove("has-cart");
+
+      setTimeout(() => {
+        famicomCartridge.className = "famicom-cartridge inserted";
+        famicomSlot.classList.add("has-cart");
+      }, 400);
+
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Erro de conexão ao buscar a ROM.");
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+
+        // Carrega ROM no core do emulador
+        nes.load(bytes);
+
+        // Liga console e TV
+        setTimeout(() => {
+          nes.start();
+          tvCabinet.classList.add("running");
+          updateLedColor();
+          famicomPower.classList.add("on");
+          famicomLed.classList.add("on");
+        }, 800);
+
+      } catch (err) {
+        statusText.textContent = "Erro ao baixar jogo: " + err.message;
+        setTimeout(() => {
+          famicomCartridge.className = "famicom-cartridge ejected";
+          famicomSlot.classList.remove("has-cart");
+        }, 1000);
+      }
+    }
+
+    // Lógica de Save States (Disquetes)
+    function saveGameSlot(slot) {
+      if (!nes.bus.cart) {
+        alert("Carregue um jogo primeiro antes de salvar o progresso!");
+        return;
+      }
+      
+      try {
+        const state = nes.saveState();
+        if (!state) return;
+
+        localStorage.setItem(`nes_save_slot_${slot}`, JSON.stringify(state));
+
+        const gameName = famicomCartTitle.textContent || "JOGO";
+        localStorage.setItem(`nes_save_name_slot_${slot}`, gameName);
+
+        document.getElementById(`floppyGame${slot}`).textContent = gameName.substring(0, 7);
+
+        // Flash de confirmação verde no disquete
+        const floppy = document.getElementById(`floppySlot${slot}`);
+        floppy.style.boxShadow = "0 0 15px #27ae60";
+        setTimeout(() => {
+          floppy.style.boxShadow = "0 2px 4px rgba(0,0,0,0.6)";
+        }, 600);
+
+        const statusText = document.getElementById("status");
+        statusText.textContent = nes.statusBase + ` | Estado salvo no Slot ${slot}!`;
+      } catch (err) {
+        alert("Erro ao salvar progresso: " + err.message);
+      }
+    }
+
+    function loadGameSlot(slot) {
+      if (!nes.bus.cart) {
+        alert("Carregue o jogo correspondente primeiro antes de carregar o estado!");
+        return;
+      }
+
+      try {
+        const stateStr = localStorage.getItem(`nes_save_slot_${slot}`);
+        if (!stateStr) {
+          alert(`Nenhum save encontrado no Slot ${slot}!`);
+          return;
+        }
+
+        const state = JSON.parse(stateStr);
+        const success = nes.loadState(state);
+
+        if (success) {
+          // Flash de confirmação amarelo no disquete
+          const floppy = document.getElementById(`floppySlot${slot}`);
+          floppy.style.boxShadow = "0 0 15px #facc15";
+          setTimeout(() => {
+            floppy.style.boxShadow = "0 2px 4px rgba(0,0,0,0.6)";
+          }, 600);
+
+          const statusText = document.getElementById("status");
+          statusText.textContent = nes.statusBase + ` | Slot ${slot} restaurado com sucesso!`;
+        } else {
+          alert("Não foi possível carregar o estado neste jogo.");
+        }
+      } catch (err) {
+        alert("Erro ao carregar o progresso: " + err.message);
+      }
+    }
+
+    function initFloppyLabels() {
+      for (let slot = 1; slot <= 2; slot++) {
+        const game = localStorage.getItem(`nes_save_name_slot_${slot}`);
+        if (game) {
+          document.getElementById(`floppyGame${slot}`).textContent = game.substring(0, 7);
+        }
+      }
+    }
+    
+    initFloppyLabels();
+
+    // Lógica do Chuvisco Analógico (Imagem e Som de Estática)
+    let staticAnimationId = null;
+    let staticAudioCtx = null;
+    let staticNoiseNode = null;
+    let staticGainNode = null;
+
+    function startTvStatic() {
+      if (staticAnimationId) return;
+
+      const canvas = document.getElementById("screen");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      const imgData = ctx.createImageData(256, 240);
+      const data = imgData.data;
+
+      startStaticAudio();
+
+      function drawNoise() {
+        if (!tvOn || famicomSlot.classList.contains("has-cart")) {
+          staticAnimationId = null;
+          stopStaticAudio();
+          return;
+        }
+
+        for (let i = 0; i < data.length; i += 4) {
+          const v = Math.random() * 255;
+          data[i] = v;          // R
+          data[i+1] = v;        // G
+          data[i+2] = v + 15 > 255 ? 255 : v + 15;  // B (leve azulado)
+          data[i+3] = 255;      // A
+        }
+        ctx.putImageData(imgData, 0, 0);
+        staticAnimationId = requestAnimationFrame(drawNoise);
+      }
+
+      staticAnimationId = requestAnimationFrame(drawNoise);
+    }
+
+    function stopTvStatic() {
+      if (staticAnimationId) {
+        cancelAnimationFrame(staticAnimationId);
+        staticAnimationId = null;
+      }
+      stopStaticAudio();
+    }
+
+    function startStaticAudio() {
+      if (volIndex === 0) return;
+
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+
+        if (!staticAudioCtx) {
+          staticAudioCtx = new AudioCtx();
+        }
+
+        if (staticAudioCtx.state === "suspended") {
+          staticAudioCtx.resume();
+        }
+
+        if (staticNoiseNode) return;
+
+        const bufferSize = staticAudioCtx.sampleRate * 2;
+        const noiseBuffer = staticAudioCtx.createBuffer(1, bufferSize, staticAudioCtx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        staticNoiseNode = staticAudioCtx.createBufferSource();
+        staticNoiseNode.buffer = noiseBuffer;
+        staticNoiseNode.loop = true;
+
+        staticGainNode = staticAudioCtx.createGain();
+        const levelsStatic = [0, 0.03, 0.07, 0.12];
+        staticGainNode.gain.value = levelsStatic[volIndex] || 0.12;
+
+        const filter = staticAudioCtx.createBiquadFilter();
+        filter.type = "bandpass";
+        filter.frequency.value = 1000;
+        filter.Q.value = 0.5;
+
+        staticNoiseNode.connect(filter);
+        filter.connect(staticGainNode);
+        staticGainNode.connect(staticAudioCtx.destination);
+
+        staticNoiseNode.start();
+      } catch (err) {
+        console.error("Erro ao iniciar áudio do chuvisco:", err);
+      }
+    }
+
+    function stopStaticAudio() {
+      if (staticNoiseNode) {
+        try {
+          staticNoiseNode.stop();
+        } catch (e) {}
+        staticNoiseNode.disconnect();
+        staticNoiseNode = null;
+      }
+      if (staticGainNode) {
+        staticGainNode.disconnect();
+        staticGainNode = null;
+      }
+    }
+
+    // Inicia o chuvisco na inicialização se a TV estiver ligada e sem fita
+    if (tvOn && !famicomSlot.classList.contains("has-cart")) {
+      startTvStatic();
+    }
+
+    // Lógica do Monitor de CPU Real-time
+    let cpuMonitorEnabled = false;
+    const btnToggleCpuMonitor = document.getElementById("btnToggleCpuMonitor");
+    const cpuMonitorCard = document.getElementById("cpuMonitorCard");
+
+    btnToggleCpuMonitor.addEventListener("click", () => {
+      cpuMonitorEnabled = !cpuMonitorEnabled;
+      btnToggleCpuMonitor.classList.toggle("active", cpuMonitorEnabled);
+      cpuMonitorCard.classList.toggle("active", cpuMonitorEnabled);
+      btnToggleCpuMonitor.textContent = cpuMonitorEnabled ? "Desligar" : "Ligar";
+      if (!cpuMonitorEnabled) {
+        document.getElementById("cpuDisasm").textContent = "Monitor desligado.";
+      }
+    });
+
+    let cpuMonitorTimer = 0;
+    window.runCpuMonitorUpdate = function() {
+      if (!cpuMonitorEnabled || !nes.running || nes.paused) return;
+      
+      cpuMonitorTimer++;
+      if (cpuMonitorTimer < 8) return; // Atualiza a cada 8 frames (~7.5 updates/segundo)
+      cpuMonitorTimer = 0;
+
+      // Registradores
+      document.getElementById("regA").textContent = nes.cpu.a.toString(16).toUpperCase().padStart(2, "0");
+      document.getElementById("regX").textContent = nes.cpu.x.toString(16).toUpperCase().padStart(2, "0");
+      document.getElementById("regY").textContent = nes.cpu.y.toString(16).toUpperCase().padStart(2, "0");
+      document.getElementById("regSP").textContent = nes.cpu.sp.toString(16).toUpperCase().padStart(2, "0");
+      document.getElementById("regPC").textContent = nes.cpu.pc.toString(16).toUpperCase().padStart(4, "0");
+      document.getElementById("regCycles").textContent = nes.cpu.cycles;
+
+      // Flags de Status
+      const p = nes.cpu.p;
+      document.getElementById("flagN").classList.toggle("active", p & 0x80);
+      document.getElementById("flagV").classList.toggle("active", p & 0x40);
+      document.getElementById("flagU").classList.toggle("active", p & 0x20);
+      document.getElementById("flagB").classList.toggle("active", p & 0x10);
+      document.getElementById("flagD").classList.toggle("active", p & 0x08);
+      document.getElementById("flagI").classList.toggle("active", p & 0x04);
+      document.getElementById("flagZ").classList.toggle("active", p & 0x02);
+      document.getElementById("flagC").classList.toggle("active", p & 0x01);
+
+      // Desassemblador
+      try {
+        document.getElementById("cpuDisasm").textContent = disassembleCpuContext();
+      } catch(e) {
+        document.getElementById("cpuDisasm").textContent = "Erro ao desassemblar opcode";
+      }
+    };
+
+    function disassembleCpuContext() {
+      const pc = nes.cpu.pc;
+      const op = nes.cpu.read(pc);
+      
+      const opcodes = {
+        0x78: "SEI", 0xD8: "CLD", 0xA9: "LDA #$", 0xAD: "LDA $", 0x8D: "STA $",
+        0xA2: "LDX #$", 0x8E: "STX $", 0xA0: "LDY #$", 0x8C: "STY $", 0x4C: "JMP $",
+        0x20: "JSR $", 0x60: "RTS", 0x40: "RTI", 0xEA: "NOP", 0x09: "ORA #$",
+        0x29: "AND #$", 0x49: "EOR #$", 0x69: "ADC #$", 0xE9: "SBC #$", 0xC9: "CMP #$",
+        0xE0: "CPX #$", 0xC0: "CPY #$", 0x10: "BPL $", 0x30: "BMI $", 0x50: "BVC $",
+        0x70: "BVS $", 0x90: "BCC $", 0xB0: "BCS $", 0xD0: "BNE $", 0xF0: "BEQ $",
+        0x38: "SEC", 0x18: "CLC", 0xF8: "SED", 0x58: "CLI", 0xB8: "CLV",
+        0xCA: "DEX", 0x88: "DEY", 0xE8: "INX", 0xC6: "DEC $", 0xE6: "INC $", 0x4A: "LSR A",
+        0x0A: "ASL A", 0x2A: "ROL A", 0x6A: "ROR A", 0x06: "ASL $", 0x26: "ROL $",
+        0x46: "LSR $", 0x66: "ROR $", 0xAA: "TAX", 0x8A: "TXA", 0xA8: "TAY", 0x98: "TYA",
+        0xBA: "TSX", 0x9A: "TXS", 0x48: "PHA", 0x68: "PLA", 0x08: "PHP", 0x28: "PLP",
+        0xA5: "LDA $", 0x85: "STA $", 0x86: "STX $", 0xA6: "LDX $", 0x84: "STY $", 0xA4: "LDY $"
+      };
+
+      const name = opcodes[op] || "OP $" + op.toString(16).toUpperCase();
+      
+      const b1 = nes.cpu.read(pc + 1);
+      const b2 = nes.cpu.read(pc + 2);
+      
+      let arg = "";
+      if (name.includes("#$")) {
+        arg = b1.toString(16).toUpperCase().padStart(2, "0");
+      } else if (name.includes("$")) {
+        if (op === 0xA5 || op === 0x85 || op === 0x86 || op === 0xA6 || op === 0x84 || op === 0xA4) {
+          // Zero page addressing mode has a 1-byte address
+          arg = b1.toString(16).toUpperCase().padStart(2, "0");
+        } else {
+          // Absolute addressing mode has a 2-byte address
+          arg = (b1 | (b2 << 8)).toString(16).toUpperCase().padStart(4, "0");
+        }
+      }
+
+      const line1 = `$${pc.toString(16).toUpperCase().padStart(4, "0")}: ${name}${arg}`;
+      const size = (op === 0xA5 || op === 0x85 || op === 0x86 || op === 0xA6 || op === 0x84 || op === 0xA4 || name.includes("#$")) ? 2 : (name.includes("$") ? 3 : 1);
+      
+      const nextPc = (pc + size) & 0xFFFF;
+      const nextOp = nes.cpu.read(nextPc);
+      const nextName = opcodes[nextOp] || "OP $" + nextOp.toString(16).toUpperCase();
+      const line2 = `   Próx: ${nextName}`;
+
+      return line1 + "\n" + line2;
+    }
+  </script>
 </body>
 </html>
